@@ -347,7 +347,12 @@ func StartFetch(postUrl string, id int64, msgId int) {
 			}
 			_, _ = bot.Send(msg)
 		case "link": // link
-			msg.Text = html.UnescapeString(root["title"].(string) + "\n" + root["url"].(string))
+			u := root["url"].(string)
+			if u[len(u)-4:] == "gifv" && strings.HasPrefix(u, "https://i.imgur.com") { // imgur gif
+				HandleGifFinal(u[:len(u)-4]+"mp4", root["title"].(string), id)
+				return
+			}
+			msg.Text = html.UnescapeString(root["title"].(string) + "\n" + u) // a normal link
 			_, _ = bot.Send(msg)
 		case "hosted:video": // v.reddit
 			msg.Text = "Please select the quality"

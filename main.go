@@ -333,6 +333,13 @@ func StartFetch(postUrl string, id int64, msgId int) {
 		}
 		root = data.(map[string]interface{})
 	}
+	// check cross post
+	if _, crossPost := root["crosspost_parent_list"]; crossPost {
+		c := root["crosspost_parent_list"].([]interface{})
+		if len(c) != 0 {
+			root = c[0].(map[string]interface{})
+		}
+	}
 	// check it
 	msg := tgbotapi.NewMessage(id, "")
 	msg.ReplyToMessageID = msgId

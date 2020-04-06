@@ -96,7 +96,7 @@ func HandleCallback(data string, id int64, msgId int) {
 		} else { // gif; type = 2
 			HandleGifFinal(m[data[1:2]], m["title"], id)
 		}
-		UserMedia.Delete(data[1:])
+		UserMedia.Delete(data[2:])
 	} else {
 		_, _ = bot.Send(tgbotapi.NewMessage(id, "Please resend the link to bot"))
 	}

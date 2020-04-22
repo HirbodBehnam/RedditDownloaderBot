@@ -23,7 +23,7 @@ import (
 var UserMedia *cache.Cache
 var bot *tgbotapi.BotAPI
 
-const VERSION = "1.0.0"
+const VERSION = "1.1.0"
 
 var QUALITY = []string{"1080", "720", "480", "360", "240", "96"}
 
@@ -352,7 +352,6 @@ func StartFetch(postUrl string, id int64, msgId int) {
 			} else {
 				msg.ReplyMarkup = GenerateInlineKeyboardPhoto(root["preview"].(map[string]interface{})["images"].([]interface{})[0].(map[string]interface{}), root["title"].(string), false)
 			}
-			_, _ = bot.Send(msg)
 		case "link": // link
 			u := root["url"].(string)
 			if u[len(u)-4:] == "gifv" && strings.HasPrefix(u, "https://i.imgur.com") { // imgur gif
@@ -360,22 +359,31 @@ func StartFetch(postUrl string, id int64, msgId int) {
 				return
 			}
 			msg.Text = html.UnescapeString(root["title"].(string) + "\n" + u) // a normal link
-			_, _ = bot.Send(msg)
 		case "hosted:video": // v.reddit
 			msg.Text = "Please select the quality"
 			vid := root["media"].(map[string]interface{})["reddit_video"].(map[string]interface{})
 			msg.ReplyMarkup = GenerateInlineKeyboardVideo(vid["fallback_url"].(string), root["url"].(string), root["title"].(string))
-			_, _ = bot.Send(msg)
+		case "rich:video": // files hosted other than reddit; This bot currently supports gfycat.com
+			if urlObject, domainExists := root["domain"]; domainExists {
+				switch urlObject.(string) {
+				case "gfycat.com": // just act like gif
+					msg.Text = "Please select the quality"
+					msg.ReplyMarkup = GenerateInlineKeyboardPhoto(root["preview"].(map[string]interface{})["images"].([]interface{})[0].(map[string]interface{})["variants"].(map[string]interface{})["mp4"].(map[string]interface{}), root["title"].(string), true)
+				default:
+					msg.Text = "This bot does not support downloading from " + urlObject.(string)
+				}
+			} else {
+				msg.Text = "The type of this post is rich:video but it does not contains `domain`"
+			}
 		default:
 			msg.Text = "This post type is not supported: " + hint.(string)
-			_, _ = bot.Send(msg)
 		}
 	} else { // text
 		msg.Text = html.UnescapeString(root["title"].(string) + "\n" + root["selftext"].(string)) // just make sure that the markdown is ok
 		msg.Text = strings.ReplaceAll(msg.Text, "&#x200B;", "")                                   // https://www.reddit.com/r/OutOfTheLoop/comments/9abjhm/what_does_x200b_mean/
 		msg.ParseMode = "markdown"
-		_, _ = bot.Send(msg)
 	}
+	_, _ = bot.Send(msg)
 }
 
 // generates an inline keyboard for user to choose the quality of media and stores it in cache db

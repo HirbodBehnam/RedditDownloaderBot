@@ -23,7 +23,7 @@ import (
 var UserMedia *cache.Cache
 var bot *tgbotapi.BotAPI
 
-const VERSION = "1.1.0"
+const VERSION = "1.2.0"
 
 var QUALITY = []string{"1080", "720", "480", "360", "240", "96"}
 
@@ -149,17 +149,8 @@ func HandlePhotoFinal(photoUrl, title string, id int64, asPhoto bool) {
 func HandleGifFinal(gifUrl, title string, id int64) {
 	firstMessage, _ := bot.Send(tgbotapi.NewMessage(id, "Downloading GIF..."))
 	defer bot.Send(tgbotapi.NewDeleteMessage(id, firstMessage.MessageID))
-	var fileName string
-	{
-		u, err := url.Parse(gifUrl)
-		if err != nil {
-			_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot parse url: "+err.Error()))
-			return
-		}
-		fileName = u.Path[1:]
-	}
 	// generate a temp file
-	tmpFile, err := ioutil.TempFile("", "*."+fileName+".mp4")
+	tmpFile, err := ioutil.TempFile("", "*.mp4")
 	if err != nil {
 		log.Println("Cannot create temp file:", err)
 		_, _ = bot.Send(tgbotapi.NewMessage(id, "internal error"))
@@ -280,7 +271,8 @@ func StartFetch(postUrl string, id int64, msgId int) {
 	// dont crash the whole thing
 	defer func() {
 		if r := recover(); r != nil {
-			log.Printf("Recovering from panic in printAllOperations error is: %v \n", r)
+			log.Printf("Recovering from panic in StartFetch error is: %v \n", r)
+			_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot get data. (panic)"))
 		}
 	}()
 	var postId string
@@ -348,7 +340,15 @@ func StartFetch(postUrl string, id int64, msgId int) {
 		case "image": // image or gif
 			msg.Text = "Please select the quality"
 			if root["url"].(string)[len(root["url"].(string))-3:] == "gif" {
-				msg.ReplyMarkup = GenerateInlineKeyboardPhoto(root["preview"].(map[string]interface{})["images"].([]interface{})[0].(map[string]interface{})["variants"].(map[string]interface{})["mp4"].(map[string]interface{}), root["title"].(string), true)
+				// check imgur gifs
+				if strings.HasPrefix(root["url"].(string), "https://i.imgur.com") { // Example: https://www.reddit.com/r/dankmemes/comments/gag117/you_daughter_of_a_bitch_im_in/
+					gifDownloadUrl := root["url"].(string)
+					lastSlash := strings.LastIndex(gifDownloadUrl, "/")
+					gifDownloadUrl = gifDownloadUrl[:lastSlash+1] + "download" + gifDownloadUrl[lastSlash:]
+					HandleGifFinal(gifDownloadUrl, root["title"].(string), id)
+					return
+				}
+				msg.ReplyMarkup = GenerateInlineKeyboardPhoto(root["preview"].(map[string]interface{})["images"].([]interface{})[0].(map[string]interface{})["variants"].(map[string]interface{})["mp4"].(map[string]interface{}), root["title"].(string), true) // this is normal reddit gif
 			} else {
 				msg.ReplyMarkup = GenerateInlineKeyboardPhoto(root["preview"].(map[string]interface{})["images"].([]interface{})[0].(map[string]interface{}), root["title"].(string), false)
 			}

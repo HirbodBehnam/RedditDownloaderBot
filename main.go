@@ -23,7 +23,7 @@ import (
 var UserMedia *cache.Cache
 var bot *tgbotapi.BotAPI
 
-const VERSION = "1.2.0"
+const VERSION = "1.2.1"
 
 var QUALITY = []string{"1080", "720", "480", "360", "240", "96"}
 
@@ -370,7 +370,7 @@ func StartFetch(postUrl string, id int64, msgId int) {
 					msg.Text = "Please select the quality"
 					msg.ReplyMarkup = GenerateInlineKeyboardPhoto(root["preview"].(map[string]interface{})["images"].([]interface{})[0].(map[string]interface{})["variants"].(map[string]interface{})["mp4"].(map[string]interface{}), root["title"].(string), true)
 				default:
-					msg.Text = "This bot does not support downloading from " + urlObject.(string)
+					msg.Text = "This bot does not support downloading from " + urlObject.(string) + "\nThe url field in json is " + root["url"].(string)
 				}
 			} else {
 				msg.Text = "The type of this post is rich:video but it does not contains `domain`"

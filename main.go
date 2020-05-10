@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -23,7 +24,7 @@ import (
 var UserMedia *cache.Cache
 var bot *tgbotapi.BotAPI
 
-const VERSION = "1.2.1"
+const VERSION = "1.2.2"
 
 var QUALITY = []string{"1080", "720", "480", "360", "240", "96"}
 
@@ -271,7 +272,7 @@ func StartFetch(postUrl string, id int64, msgId int) {
 	// dont crash the whole thing
 	defer func() {
 		if r := recover(); r != nil {
-			log.Printf("Recovering from panic in StartFetch error is: %v \n", r)
+			log.Printf("Recovering from panic in StartFetch error is: %v, The url was:%v\n", r, postUrl)
 			_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot get data. (panic)"))
 		}
 	}()
@@ -362,13 +363,27 @@ func StartFetch(postUrl string, id int64, msgId int) {
 		case "hosted:video": // v.reddit
 			msg.Text = "Please select the quality"
 			vid := root["media"].(map[string]interface{})["reddit_video"].(map[string]interface{})
-			msg.ReplyMarkup = GenerateInlineKeyboardVideo(vid["fallback_url"].(string), root["url"].(string), root["title"].(string))
+			msg.ReplyMarkup = GenerateInlineKeyboardVideo(vid["fallback_url"].(string), root["title"].(string))
 		case "rich:video": // files hosted other than reddit; This bot currently supports gfycat.com
 			if urlObject, domainExists := root["domain"]; domainExists {
 				switch urlObject.(string) {
 				case "gfycat.com": // just act like gif
 					msg.Text = "Please select the quality"
-					msg.ReplyMarkup = GenerateInlineKeyboardPhoto(root["preview"].(map[string]interface{})["images"].([]interface{})[0].(map[string]interface{})["variants"].(map[string]interface{})["mp4"].(map[string]interface{}), root["title"].(string), true)
+					images := root["preview"].(map[string]interface{})["images"].([]interface{})[0].(map[string]interface{})
+					if _, hasVariants := images["variants"]; hasVariants {
+						if mp4, hasMp4 := images["variants"].(map[string]interface{})["mp4"]; hasMp4 {
+							msg.ReplyMarkup = GenerateInlineKeyboardPhoto(mp4.(map[string]interface{}), root["title"].(string), true)
+							break
+						}
+					}
+					// check reddit_video_preview
+					if vid, hasVid := root["preview"].(map[string]interface{})["reddit_video_preview"]; hasVid {
+						if u, hasUrl := vid.(map[string]interface{})["fallback_url"]; hasUrl {
+							msg.ReplyMarkup = GenerateInlineKeyboardVideo(u.(string), root["title"].(string))
+							break
+						}
+					}
+					msg.Text = "Cannot get the video. Here is the direct link to gfycat:\n" + root["url"].(string)
 				default:
 					msg.Text = "This bot does not support downloading from " + urlObject.(string) + "\nThe url field in json is " + root["url"].(string)
 				}
@@ -436,16 +451,16 @@ func GenerateInlineKeyboardPhoto(data map[string]interface{}, title string, isGi
 	}
 }
 
-func GenerateInlineKeyboardVideo(vidUrl, base string, title string) tgbotapi.InlineKeyboardMarkup {
+func GenerateInlineKeyboardVideo(vidUrl, title string) tgbotapi.InlineKeyboardMarkup {
 	m := make(map[string]string) // I store this in cache
 	var keyboard [][]tgbotapi.InlineKeyboardButton
 	// at first generate a guid for cache
 	id := guuid.New().String()
 	// get max res
-	res := vidUrl[len(vidUrl)-20 : len(vidUrl)-16]
-	if res[0] == '_' {
-		res = res[1:]
-	}
+	u, _ := url.Parse(vidUrl)
+	u.RawQuery = ""
+	res := path.Base(u.Path)[strings.LastIndex(path.Base(u.Path), "_")+1:] // the max res of video
+	base := u.String()[:strings.LastIndex(u.String(), "/")]                // base url is this: https://v.redd.it/3lelz0i6crx41
 	// list all of the qualities
 	startAdd := false
 	for k, v := range QUALITY {

@@ -326,6 +326,8 @@ func StartFetch(postUrl string, id int64, msgId int) {
 		}
 		root = data.(map[string]interface{})
 	}
+	// get the title
+	title := root["title"].(string)
 	// check cross post
 	if _, crossPost := root["crosspost_parent_list"]; crossPost {
 		c := root["crosspost_parent_list"].([]interface{})
@@ -346,24 +348,24 @@ func StartFetch(postUrl string, id int64, msgId int) {
 					gifDownloadUrl := root["url"].(string)
 					lastSlash := strings.LastIndex(gifDownloadUrl, "/")
 					gifDownloadUrl = gifDownloadUrl[:lastSlash+1] + "download" + gifDownloadUrl[lastSlash:]
-					HandleGifFinal(gifDownloadUrl, root["title"].(string), id)
+					HandleGifFinal(gifDownloadUrl, title, id)
 					return
 				}
-				msg.ReplyMarkup = GenerateInlineKeyboardPhoto(root["preview"].(map[string]interface{})["images"].([]interface{})[0].(map[string]interface{})["variants"].(map[string]interface{})["mp4"].(map[string]interface{}), root["title"].(string), true) // this is normal reddit gif
+				msg.ReplyMarkup = GenerateInlineKeyboardPhoto(root["preview"].(map[string]interface{})["images"].([]interface{})[0].(map[string]interface{})["variants"].(map[string]interface{})["mp4"].(map[string]interface{}), title, true) // this is normal reddit gif
 			} else {
-				msg.ReplyMarkup = GenerateInlineKeyboardPhoto(root["preview"].(map[string]interface{})["images"].([]interface{})[0].(map[string]interface{}), root["title"].(string), false)
+				msg.ReplyMarkup = GenerateInlineKeyboardPhoto(root["preview"].(map[string]interface{})["images"].([]interface{})[0].(map[string]interface{}), title, false)
 			}
 		case "link": // link
 			u := root["url"].(string)
 			if u[len(u)-4:] == "gifv" && strings.HasPrefix(u, "https://i.imgur.com") { // imgur gif
-				HandleGifFinal(u[:len(u)-4]+"mp4", root["title"].(string), id)
+				HandleGifFinal(u[:len(u)-4]+"mp4", title, id)
 				return
 			}
-			msg.Text = html.UnescapeString(root["title"].(string) + "\n" + u) // a normal link
+			msg.Text = html.UnescapeString(title + "\n" + u) // a normal link
 		case "hosted:video": // v.reddit
 			msg.Text = "Please select the quality"
 			vid := root["media"].(map[string]interface{})["reddit_video"].(map[string]interface{})
-			msg.ReplyMarkup = GenerateInlineKeyboardVideo(vid["fallback_url"].(string), root["title"].(string))
+			msg.ReplyMarkup = GenerateInlineKeyboardVideo(vid["fallback_url"].(string), title)
 		case "rich:video": // files hosted other than reddit; This bot currently supports gfycat.com
 			if urlObject, domainExists := root["domain"]; domainExists {
 				switch urlObject.(string) {
@@ -372,14 +374,14 @@ func StartFetch(postUrl string, id int64, msgId int) {
 					images := root["preview"].(map[string]interface{})["images"].([]interface{})[0].(map[string]interface{})
 					if _, hasVariants := images["variants"]; hasVariants {
 						if mp4, hasMp4 := images["variants"].(map[string]interface{})["mp4"]; hasMp4 {
-							msg.ReplyMarkup = GenerateInlineKeyboardPhoto(mp4.(map[string]interface{}), root["title"].(string), true)
+							msg.ReplyMarkup = GenerateInlineKeyboardPhoto(mp4.(map[string]interface{}), title, true)
 							break
 						}
 					}
 					// check reddit_video_preview
 					if vid, hasVid := root["preview"].(map[string]interface{})["reddit_video_preview"]; hasVid {
 						if u, hasUrl := vid.(map[string]interface{})["fallback_url"]; hasUrl {
-							msg.ReplyMarkup = GenerateInlineKeyboardVideo(u.(string), root["title"].(string))
+							msg.ReplyMarkup = GenerateInlineKeyboardVideo(u.(string), title)
 							break
 						}
 					}
@@ -394,8 +396,8 @@ func StartFetch(postUrl string, id int64, msgId int) {
 			msg.Text = "This post type is not supported: " + hint.(string)
 		}
 	} else { // text
-		msg.Text = html.UnescapeString(root["title"].(string) + "\n" + root["selftext"].(string)) // just make sure that the markdown is ok
-		msg.Text = strings.ReplaceAll(msg.Text, "&#x200B;", "")                                   // https://www.reddit.com/r/OutOfTheLoop/comments/9abjhm/what_does_x200b_mean/
+		msg.Text = html.UnescapeString(title + "\n" + root["selftext"].(string)) // just make sure that the markdown is ok
+		msg.Text = strings.ReplaceAll(msg.Text, "&#x200B;", "")                  // https://www.reddit.com/r/OutOfTheLoop/comments/9abjhm/what_does_x200b_mean/
 		msg.ParseMode = "markdown"
 	}
 	_, _ = bot.Send(msg)

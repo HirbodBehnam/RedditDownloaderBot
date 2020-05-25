@@ -24,7 +24,7 @@ import (
 var UserMedia *cache.Cache
 var bot *tgbotapi.BotAPI
 
-const VERSION = "1.2.3"
+const VERSION = "1.2.4"
 
 var QUALITY = []string{"1080", "720", "480", "360", "240", "96"}
 

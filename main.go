@@ -24,7 +24,7 @@ import (
 var UserMedia *cache.Cache
 var bot *tgbotapi.BotAPI
 
-const VERSION = "1.2.2"
+const VERSION = "1.2.3"
 
 var QUALITY = []string{"1080", "720", "480", "360", "240", "96"}
 
@@ -202,7 +202,6 @@ func HandleVideoFinal(vidUrl, title string, id int64) {
 	// download the audio if available
 	err = DownloadFile(vidUrl[:strings.LastIndex(vidUrl, "/")]+"/audio", audFile)
 	if err != nil {
-		log.Println(err)
 		hasAudio = false
 	}
 	// merge audio and video if needed

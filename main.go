@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"github.com/PuerkitoBio/goquery"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	guuid "github.com/google/uuid"
 	"github.com/patrickmn/go-cache"
@@ -24,7 +25,7 @@ import (
 var UserMedia *cache.Cache
 var bot *tgbotapi.BotAPI
 
-const VERSION = "1.2.4"
+const VERSION = "1.3.0"
 
 var QUALITY = []string{"1080", "720", "480", "360", "240", "96"}
 
@@ -385,6 +386,26 @@ func StartFetch(postUrl string, id int64, msgId int) {
 						}
 					}
 					msg.Text = "Cannot get the video. Here is the direct link to gfycat:\n" + root["url"].(string)
+				case "streamable.com": // Example: https://streamable.com/u2jzoo
+					// download the source at first
+					source, err := DownloadString(root["url"].(string))
+					if err != nil {
+						msg.Text = "Cannot get the source code of " + root["url"].(string)
+						break
+					}
+					// get the meta tag og:video
+					doc, err := goquery.NewDocumentFromReader(strings.NewReader(string(source)))
+					if err != nil {
+						msg.Text = "Cannot parse the source code of " + root["url"].(string)
+						break
+					}
+					doc.Find("meta").Each(func(i int, s *goquery.Selection) {
+						if name, _ := s.Attr("property"); name == "og:video" {
+							videoUrl, _ := s.Attr("content")
+							HandleVideoFinal(videoUrl, title, id)
+						}
+					})
+					return
 				default:
 					msg.Text = "This bot does not support downloading from " + urlObject.(string) + "\nThe url field in json is " + root["url"].(string)
 				}

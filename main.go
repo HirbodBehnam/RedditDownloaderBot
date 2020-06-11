@@ -25,7 +25,7 @@ import (
 var UserMedia *cache.Cache
 var bot *tgbotapi.BotAPI
 
-const VERSION = "1.3.0"
+const VERSION = "1.3.1"
 
 var QUALITY = []string{"1080", "720", "480", "360", "240", "96"}
 
@@ -279,9 +279,19 @@ func StartFetch(postUrl string, id int64, msgId int) {
 	var postId string
 	// get the id
 	{
-		u, err := url.Parse(postUrl)
-		if err != nil {
-			_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot parse the url. Is the thing you send a url?"))
+		var u *url.URL = nil
+		// check all lines for links. In new reddit update, sharing via Telegram adds the post title at its first
+		lines := strings.Split(postUrl, "\n")
+		for _, line := range lines {
+			u, _ = url.Parse(line)
+			if u != nil && (u.Host == "www.reddit.com" || u.Host == "reddit.com") {
+				postUrl = line
+				break
+			}
+			u = nil // this is for last loop. If u is nil after that final loop, it means that there is no reddit url in text
+		}
+		if u == nil {
+			_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot parse reddit the url. Does your text contain a reddit url?"))
 			return
 		}
 		split := strings.Split(u.Path, "/")

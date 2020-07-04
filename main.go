@@ -25,7 +25,7 @@ import (
 var UserMedia *cache.Cache
 var bot *tgbotapi.BotAPI
 
-const VERSION = "1.3.1"
+const VERSION = "1.3.2"
 
 var QUALITY = []string{"1080", "720", "480", "360", "240", "96"}
 
@@ -375,7 +375,13 @@ func StartFetch(postUrl string, id int64, msgId int) {
 		case "hosted:video": // v.reddit
 			msg.Text = "Please select the quality"
 			vid := root["media"].(map[string]interface{})["reddit_video"].(map[string]interface{})
-			msg.ReplyMarkup = GenerateInlineKeyboardVideo(vid["fallback_url"].(string), title)
+			keyboard := GenerateInlineKeyboardVideo(vid["fallback_url"].(string), title)
+			if keyboard.InlineKeyboard != nil {
+				msg.ReplyMarkup = keyboard
+			} else { // just dl and send the main video
+				HandleVideoFinal(vid["fallback_url"].(string), title, id)
+				return
+			}
 		case "rich:video": // files hosted other than reddit; This bot currently supports gfycat.com
 			if urlObject, domainExists := root["domain"]; domainExists {
 				switch urlObject.(string) {

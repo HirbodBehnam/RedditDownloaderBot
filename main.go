@@ -25,7 +25,7 @@ import (
 var UserMedia *cache.Cache
 var bot *tgbotapi.BotAPI
 
-const VERSION = "1.3.2"
+const VERSION = "1.3.3"
 
 var QUALITY = []string{"1080", "720", "480", "360", "240", "96"}
 
@@ -186,7 +186,6 @@ func HandleVideoFinal(vidUrl, title string, id int64) {
 		return
 	}
 	defer os.Remove(vidFile.Name())
-	hasAudio := true
 	audFile, err := ioutil.TempFile("", "*.mp4")
 	if err != nil {
 		log.Println("Cannot create temp file:", err)
@@ -201,10 +200,13 @@ func HandleVideoFinal(vidUrl, title string, id int64) {
 		return
 	}
 	// download the audio if available
-	err = DownloadFile(vidUrl[:strings.LastIndex(vidUrl, "/")]+"/audio", audFile)
-	if err != nil {
-		hasAudio = false
+	audioUrl := vidUrl[:strings.LastIndex(vidUrl, "/")] // base url
+	if strings.Contains(vidUrl, ".mp4") {               // new reddit api or sth idk
+		audioUrl += "/DASH_audio.mp4"
+	} else { // old format
+		audioUrl += "/audio"
 	}
+	hasAudio := DownloadFile(audioUrl, audFile) == nil
 	// merge audio and video if needed
 	toUpload := vidFile.Name()
 	_, _ = bot.Send(tgbotapi.NewDeleteMessage(id, infoMessage.MessageID))
@@ -248,7 +250,7 @@ func HandleVideoFinal(vidUrl, title string, id int64) {
 		if fi.Size() > 50*1000*1000 { // for some reasons, this is not 50 * 1024 * 1024
 			msg := tgbotapi.NewMessage(id, "This file is too big to upload it on telegram!\nHere is the link to video: "+vidUrl)
 			if hasAudio {
-				msg.Text += "\nHere is also the link to audio file: " + vidUrl[:strings.LastIndex(vidUrl, "/")] + "/audio"
+				msg.Text += "\nHere is also the link to audio file: " + audioUrl
 			}
 			_, _ = bot.Send(msg)
 			return
@@ -499,6 +501,10 @@ func GenerateInlineKeyboardVideo(vidUrl, title string) tgbotapi.InlineKeyboardMa
 	u.RawQuery = ""
 	res := path.Base(u.Path)[strings.LastIndex(path.Base(u.Path), "_")+1:] // the max res of video
 	base := u.String()[:strings.LastIndex(u.String(), "/")]                // base url is this: https://v.redd.it/3lelz0i6crx41
+	newFormat := strings.Contains(res, ".mp4")                             // this is new reddit format. The filenames are like DASH_480.mp4
+	if newFormat {
+		res = res[:strings.Index(res, ".")] // remove format to get the max quality
+	}
 	// list all of the qualities
 	startAdd := false
 	for k, v := range QUALITY {
@@ -506,6 +512,9 @@ func GenerateInlineKeyboardVideo(vidUrl, title string) tgbotapi.InlineKeyboardMa
 			startAdd = true
 			keyboard = append(keyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(v+"p", "0"+strconv.Itoa(k)+id))) // 0 makes the data compatible with phototype
 			m[strconv.Itoa(k)] = base + "/DASH_" + v
+			if newFormat {
+				m[strconv.Itoa(k)] += ".mp4"
+			}
 		}
 	}
 	m["type"] = "1" // video

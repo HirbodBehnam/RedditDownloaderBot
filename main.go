@@ -25,7 +25,7 @@ import (
 var UserMedia *cache.Cache
 var bot *tgbotapi.BotAPI
 
-const VERSION = "1.3.3"
+const VERSION = "1.3.4"
 
 var QUALITY = []string{"1080", "720", "480", "360", "240", "96"}
 
@@ -340,6 +340,7 @@ func StartFetch(postUrl string, id int64, msgId int) {
 	}
 	// get the title
 	title := root["title"].(string)
+	title = html.UnescapeString(title)
 	// check cross post
 	if _, crossPost := root["crosspost_parent_list"]; crossPost {
 		c := root["crosspost_parent_list"].([]interface{})

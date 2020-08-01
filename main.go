@@ -25,7 +25,8 @@ import (
 var UserMedia *cache.Cache
 var bot *tgbotapi.BotAPI
 
-const VERSION = "1.3.4"
+const VERSION = "1.4.0"
+const UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.105 Safari/537.36"
 
 var QUALITY = []string{"1080", "720", "480", "360", "240", "96"}
 
@@ -142,6 +143,32 @@ func HandlePhotoFinal(photoUrl, title string, id int64, asPhoto bool) {
 	}
 	if err != nil {
 		_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot upload file: "+err.Error()))
+		log.Println("Cannot upload file:", err)
+		return
+	}
+}
+
+// Handles gallery posts like this: https://www.reddit.com/r/needforspeed/comments/i1p817/heres_some_of_my_favorite_screenshots_i_took
+func HandelGallery(files map[string]interface{}, id int64) {
+	// loop and download all files
+	fileConfigs := make([]interface{}, 0)
+	for _, imageRoot := range files {
+		// extract the url
+		image := imageRoot.(map[string]interface{})
+		if image["status"].(string) != "valid" { // i have not encountered anything else except valid so far
+			continue
+		}
+		link := image["s"].(map[string]interface{})["u"].(string)
+		// for some reasons, i have to remove all "amp;" from the url in order to make this work
+		link = strings.ReplaceAll(link, "amp;", "")
+		// now download the file
+		fileConfigs = append(fileConfigs, tgbotapi.NewInputMediaPhoto(link)) // TODO: this is a bad idea. I have to wait for multiple uploads in the bot api and fix this. Read more: https://github.com/go-telegram-bot-api/telegram-bot-api/pull/356
+	}
+	// upload all of them to telegram
+	msg := tgbotapi.NewMediaGroup(id, fileConfigs)
+	_, err := bot.Send(msg)
+	if err != nil {
+		_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot upload files: "+err.Error()))
 		log.Println("Cannot upload file:", err)
 		return
 	}
@@ -434,7 +461,12 @@ func StartFetch(postUrl string, id int64, msgId int) {
 		default:
 			msg.Text = "This post type is not supported: " + hint.(string)
 		}
-	} else { // text
+	} else { // text or gallery
+		if data, ok := root["media_metadata"]; ok { // gallery
+			HandelGallery(data.(map[string]interface{}), id)
+			return
+		}
+		// text
 		msg.Text = html.UnescapeString(title + "\n" + root["selftext"].(string)) // just make sure that the markdown is ok
 		msg.Text = strings.ReplaceAll(msg.Text, "&#x200B;", "")                  // https://www.reddit.com/r/OutOfTheLoop/comments/9abjhm/what_does_x200b_mean/
 		msg.ParseMode = "markdown"
@@ -542,7 +574,7 @@ func DownloadString(Url string) ([]byte, error) {
 		return nil, err
 	}
 	// mimic chrome
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.122 Safari/537.36")
+	req.Header.Set("User-Agent", UserAgent)
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -562,7 +594,7 @@ func DownloadFile(Url string, file *os.File) error {
 		return err
 	}
 	// mimic chrome
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.122 Safari/537.36")
+	req.Header.Set("User-Agent", UserAgent)
 	resp, err := client.Do(req)
 	if err != nil {
 		return err

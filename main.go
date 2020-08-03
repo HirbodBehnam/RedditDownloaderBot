@@ -25,7 +25,7 @@ import (
 var UserMedia *cache.Cache
 var bot *tgbotapi.BotAPI
 
-const VERSION = "1.4.0"
+const VERSION = "1.4.1"
 const UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.105 Safari/537.36"
 
 var QUALITY = []string{"1080", "720", "480", "360", "240", "96"}
@@ -241,7 +241,8 @@ func HandleVideoFinal(vidUrl, title string, id int64) {
 		// check ffmpeg first
 		if !CheckFfmpegExists() {
 			log.Println("ffmpeg not found!")
-			_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot convert video: ffmpeg is not installed on server"))
+			_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot convert video: ffmpeg is not installed on server;\nHere is the link to video: "+vidUrl+
+				"\nAnd here is the audio: "+audioUrl))
 			return
 		}
 		// convert

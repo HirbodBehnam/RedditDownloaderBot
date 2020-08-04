@@ -25,7 +25,7 @@ import (
 var UserMedia *cache.Cache
 var bot *tgbotapi.BotAPI
 
-const VERSION = "1.4.1"
+const VERSION = "1.4.2"
 const UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.105 Safari/537.36"
 
 var QUALITY = []string{"1080", "720", "480", "360", "240", "96"}
@@ -150,6 +150,7 @@ func HandlePhotoFinal(photoUrl, title string, id int64, asPhoto bool) {
 
 // Handles gallery posts like this: https://www.reddit.com/r/needforspeed/comments/i1p817/heres_some_of_my_favorite_screenshots_i_took
 func HandelGallery(files map[string]interface{}, id int64) {
+	var err error
 	// loop and download all files
 	fileConfigs := make([]interface{}, 0)
 	for _, imageRoot := range files {
@@ -165,12 +166,23 @@ func HandelGallery(files map[string]interface{}, id int64) {
 		fileConfigs = append(fileConfigs, tgbotapi.NewInputMediaPhoto(link)) // TODO: this is a bad idea. I have to wait for multiple uploads in the bot api and fix this. Read more: https://github.com/go-telegram-bot-api/telegram-bot-api/pull/356
 	}
 	// upload all of them to telegram
-	msg := tgbotapi.NewMediaGroup(id, fileConfigs)
-	_, err := bot.Send(msg)
+	i := 0
+	for ; i < len(fileConfigs)/10; i++ {
+		_, err = bot.Send(tgbotapi.NewMediaGroup(id, fileConfigs[i*10:(i+1)*10]))
+		if err != nil {
+			_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot upload files: "+err.Error()))
+			log.Println("Cannot upload file:", err)
+		}
+	}
+	fileConfigs = fileConfigs[i*10:]
+	if len(fileConfigs) == 1 {
+		_, err = bot.Send(tgbotapi.NewPhotoUpload(id, fileConfigs[0]))
+	} else if len(fileConfigs) > 1 {
+		_, err = bot.Send(tgbotapi.NewMediaGroup(id, fileConfigs))
+	}
 	if err != nil {
 		_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot upload files: "+err.Error()))
 		log.Println("Cannot upload file:", err)
-		return
 	}
 }
 

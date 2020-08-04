@@ -17,6 +17,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -159,11 +160,37 @@ func HandelGallery(files map[string]interface{}, id int64) {
 		if image["status"].(string) != "valid" { // i have not encountered anything else except valid so far
 			continue
 		}
-		link := image["s"].(map[string]interface{})["u"].(string)
-		// for some reasons, i have to remove all "amp;" from the url in order to make this work
-		link = strings.ReplaceAll(link, "amp;", "")
-		// now download the file
-		fileConfigs = append(fileConfigs, tgbotapi.NewInputMediaPhoto(link)) // TODO: this is a bad idea. I have to wait for multiple uploads in the bot api and fix this. Read more: https://github.com/go-telegram-bot-api/telegram-bot-api/pull/356
+		dataType := image["e"].(string)
+		switch dataType {
+		case "Image":
+			link := image["s"].(map[string]interface{})["u"].(string)
+			// for some reasons, i have to remove all "amp;" from the url in order to make this work
+			link = strings.ReplaceAll(link, "amp;", "")
+			fileConfigs = append(fileConfigs, tgbotapi.NewInputMediaPhoto(link)) // TODO: this is a bad idea. I have to wait for multiple uploads in the bot api and fix this. Read more: https://github.com/go-telegram-bot-api/telegram-bot-api/pull/356
+		case "AnimatedImage":
+			link := image["s"].(map[string]interface{})["mp4"].(string)
+			link = strings.ReplaceAll(link, "amp;", "")
+			fileConfigs = append(fileConfigs, tgbotapi.NewInputMediaVideo(link)) // TODO: this is a bad idea. I have to wait for multiple uploads in the bot api and fix this. Read more: https://github.com/go-telegram-bot-api/telegram-bot-api/pull/356
+		case "RedditVideo": // TODO: Because of api limitations i cannot download the audio file as well
+			id := image["id"].(string)
+			w := image["x"].(float64)
+			h := image["y"].(float64)
+			res := "96"
+			if w >= 1920 && h >= 1080 { // Is this the best way?
+				res = "1080"
+			} else if w >= 1280 && h >= 720 {
+				res = "720"
+			} else if w >= 854 && h >= 480 {
+				res = "480"
+			} else if w >= 640 && h >= 360 {
+				res = "360"
+			} else if w >= 426 && h >= 240 {
+				res = "240"
+			}
+			fileConfigs = append(fileConfigs, tgbotapi.NewInputMediaVideo("https://v.redd.it/"+id+"/DASH_"+res+".mp4"))
+		default:
+			_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot get one of the files because this type is not supported: "+dataType))
+		}
 	}
 	// upload all of them to telegram
 	i := 0
@@ -176,7 +203,11 @@ func HandelGallery(files map[string]interface{}, id int64) {
 	}
 	fileConfigs = fileConfigs[i*10:]
 	if len(fileConfigs) == 1 {
-		_, err = bot.Send(tgbotapi.NewPhotoUpload(id, fileConfigs[0]))
+		if reflect.TypeOf(fileConfigs[0]).Name() == "InputMediaVideo" {
+			_, err = bot.Send(tgbotapi.NewVideoShare(id, fileConfigs[0].(tgbotapi.InputMediaVideo).Media))
+		} else { // InputMediaPhoto
+			_, err = bot.Send(tgbotapi.NewPhotoShare(id, fileConfigs[0].(tgbotapi.InputMediaPhoto).Media))
+		}
 	} else if len(fileConfigs) > 1 {
 		_, err = bot.Send(tgbotapi.NewMediaGroup(id, fileConfigs))
 	}

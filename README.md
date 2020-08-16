@@ -12,7 +12,7 @@ A telegram bot to download the reddit posts.
 * Download any videos or photos that are not hosted on `x.redd.it` (for example youtube)
 ### List of non `x.redd.it` hosts that this bot can download from them
 1. imgur (gifs and pictures)
-2. gfycat (Note that some of them may not work because they are not hosted on reddit)
+2. gfycat (Note that some of them may not work because they are not hosted on reddit. Also they are soundless)
 3. streamable
 ## Setup
 To start, please at first install [FFmpeg](https://www.ffmpeg.org/) in your path. On Ubuntu, `apt install ffmpeg` is enough.

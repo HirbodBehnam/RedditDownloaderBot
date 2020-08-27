@@ -26,7 +26,7 @@ import (
 var UserMedia *cache.Cache
 var bot *tgbotapi.BotAPI
 
-const VERSION = "1.4.3"
+const VERSION = "1.4.4"
 const UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.105 Safari/537.36"
 
 var QUALITY = []string{"1080", "720", "480", "360", "240", "96"}
@@ -149,12 +149,13 @@ func HandlePhotoFinal(photoUrl, title string, id int64, asPhoto bool) {
 	}
 }
 
-// Handles gallery posts like this: https://www.reddit.com/r/needforspeed/comments/i1p817/heres_some_of_my_favorite_screenshots_i_took
-func HandelGallery(files map[string]interface{}, id int64) {
+// Handles gallery posts like this: https://www.reddit.com/r/blender/comments/ibd7uc/finality/
+func HandelGallery(files map[string]interface{}, galleryDataItems []interface{}, id int64) {
 	var err error
 	// loop and download all files
 	fileConfigs := make([]interface{}, 0)
-	for _, imageRoot := range files {
+	for _, data := range galleryDataItems {
+		imageRoot := files[data.(map[string]interface{})["media_id"].(string)]
 		// extract the url
 		image := imageRoot.(map[string]interface{})
 		if image["status"].(string) != "valid" { // i have not encountered anything else except valid so far
@@ -166,11 +167,19 @@ func HandelGallery(files map[string]interface{}, id int64) {
 			link := image["s"].(map[string]interface{})["u"].(string)
 			// for some reasons, i have to remove all "amp;" from the url in order to make this work
 			link = strings.ReplaceAll(link, "amp;", "")
-			fileConfigs = append(fileConfigs, tgbotapi.NewInputMediaPhoto(link)) // TODO: this is a bad idea. I have to wait for multiple uploads in the bot api and fix this. Read more: https://github.com/go-telegram-bot-api/telegram-bot-api/pull/356
+			p := tgbotapi.NewInputMediaPhoto(link)
+			if c, ok := data.(map[string]interface{})["caption"]; ok {
+				p.Caption = c.(string)
+			}
+			fileConfigs = append(fileConfigs, p) // TODO: this is a bad idea. I have to wait for multiple uploads in the bot api and fix this. Read more: https://github.com/go-telegram-bot-api/telegram-bot-api/pull/356
 		case "AnimatedImage":
 			link := image["s"].(map[string]interface{})["mp4"].(string)
 			link = strings.ReplaceAll(link, "amp;", "")
-			fileConfigs = append(fileConfigs, tgbotapi.NewInputMediaVideo(link)) // TODO: this is a bad idea. I have to wait for multiple uploads in the bot api and fix this. Read more: https://github.com/go-telegram-bot-api/telegram-bot-api/pull/356
+			v := tgbotapi.NewInputMediaVideo(link)
+			if c, ok := data.(map[string]interface{})["caption"]; ok {
+				v.Caption = c.(string)
+			}
+			fileConfigs = append(fileConfigs, v) // TODO: this is a bad idea. I have to wait for multiple uploads in the bot api and fix this. Read more: https://github.com/go-telegram-bot-api/telegram-bot-api/pull/356
 		case "RedditVideo": // TODO: Because of api limitations i cannot download the audio file as well
 			id := image["id"].(string)
 			w := image["x"].(float64)
@@ -187,7 +196,11 @@ func HandelGallery(files map[string]interface{}, id int64) {
 			} else if w >= 426 && h >= 240 {
 				res = "240"
 			}
-			fileConfigs = append(fileConfigs, tgbotapi.NewInputMediaVideo("https://v.redd.it/"+id+"/DASH_"+res+".mp4"))
+			v := tgbotapi.NewInputMediaVideo("https://v.redd.it/" + id + "/DASH_" + res + ".mp4")
+			if c, ok := data.(map[string]interface{})["caption"]; ok {
+				v.Caption = c.(string)
+			}
+			fileConfigs = append(fileConfigs, v)
 		default:
 			_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot get one of the files because this type is not supported: "+dataType))
 		}
@@ -345,7 +358,7 @@ func StartFetch(postUrl string, id int64, msgId int) {
 	// dont crash the whole thing
 	defer func() {
 		if r := recover(); r != nil {
-			log.Printf("Recovering from panic in StartFetch error is: %v, The url was:%v\n", r, postUrl)
+			log.Printf("Recovering from panic in StartFetch error is: %v, The url was: %v\n", r, postUrl)
 			_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot get data. (panic)"))
 		}
 	}()
@@ -506,9 +519,11 @@ func StartFetch(postUrl string, id int64, msgId int) {
 			msg.Text = "This post type is not supported: " + hint.(string)
 		}
 	} else { // text or gallery
-		if data, ok := root["media_metadata"]; ok { // gallery
-			HandelGallery(data.(map[string]interface{}), id)
-			return
+		if gData, ok := root["gallery_data"]; ok { // gallery
+			if data, ok := root["media_metadata"]; ok {
+				HandelGallery(data.(map[string]interface{}), gData.(map[string]interface{})["items"].([]interface{}), id)
+				return
+			}
 		}
 		// text
 		msg.Text = html.UnescapeString(title + "\n" + root["selftext"].(string)) // just make sure that the markdown is ok

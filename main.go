@@ -26,10 +26,12 @@ import (
 var UserMedia *cache.Cache
 var bot *tgbotapi.BotAPI
 
-const VERSION = "1.4.4"
-const UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.105 Safari/537.36"
+const VERSION = "1.4.5"
+const UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.83 Safari/537.36"
+const RegularMaxUploadSize = 50 * 1000 * 1000 // these must be 1000 not 1024
+const PhotoMaxUploadSize = 10 * 1000 * 1000
 
-var QUALITY = []string{"1080", "720", "480", "360", "240", "96"}
+var QUALITY = []string{"1080", "720", "480", "360", "240", "96"} // I haven't found anything higher than 1080p
 
 func main() {
 	var err error
@@ -86,7 +88,7 @@ func main() {
 	}
 }
 
-// this method runs when the user chooses one of the resolutions
+// This method runs when the user chooses one of the resolutions
 func HandleCallback(data string, id int64, msgId int) {
 	// at first get the url from cache
 	// the first char is requested type (media or file)
@@ -106,7 +108,7 @@ func HandleCallback(data string, id int64, msgId int) {
 	}
 }
 
-// download and send the photo
+// Download and send the photo
 func HandlePhotoFinal(photoUrl, title string, id int64, asPhoto bool) {
 	// get the file name
 	var fileName string
@@ -122,14 +124,22 @@ func HandlePhotoFinal(photoUrl, title string, id int64, asPhoto bool) {
 	tmpFile, err := ioutil.TempFile("", "*."+fileName)
 	if err != nil {
 		log.Println("Cannot create temp file:", err)
-		_, _ = bot.Send(tgbotapi.NewMessage(id, "internal error"))
+		_, _ = bot.Send(tgbotapi.NewMessage(id, "internal error: cannot create temp file"))
 		return
 	}
 	defer os.Remove(tmpFile.Name()) // clean up
 	// download the file
 	err = DownloadFile(photoUrl, tmpFile)
 	if err != nil {
-		_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot download file: "+err.Error()))
+		_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot download file: "+err.Error()+"\nHere is the link to image: "+photoUrl))
+		return
+	}
+	// check filesize
+	if asPhoto {
+		asPhoto = CheckFileSize(tmpFile.Name(), PhotoMaxUploadSize) // send photo as file if it is larger than 10MB
+	}
+	if !CheckFileSize(tmpFile.Name(), RegularMaxUploadSize) {
+		_, _ = bot.Send(tgbotapi.NewMessage(id, "This file is too big to upload it on telegram!\nHere is the link to image: "+photoUrl))
 		return
 	}
 	// send the file to telegram
@@ -143,7 +153,7 @@ func HandlePhotoFinal(photoUrl, title string, id int64, asPhoto bool) {
 		_, err = bot.Send(msg)
 	}
 	if err != nil {
-		_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot upload file: "+err.Error()))
+		_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot upload file: "+err.Error()+"\nHere is the link to image: "+photoUrl))
 		log.Println("Cannot upload file:", err)
 		return
 	}
@@ -154,6 +164,7 @@ func HandelGallery(files map[string]interface{}, galleryDataItems []interface{},
 	var err error
 	// loop and download all files
 	fileConfigs := make([]interface{}, 0)
+	urls := make([]string, 0)
 	for _, data := range galleryDataItems {
 		imageRoot := files[data.(map[string]interface{})["media_id"].(string)]
 		// extract the url
@@ -167,6 +178,7 @@ func HandelGallery(files map[string]interface{}, galleryDataItems []interface{},
 			link := image["s"].(map[string]interface{})["u"].(string)
 			// for some reasons, i have to remove all "amp;" from the url in order to make this work
 			link = strings.ReplaceAll(link, "amp;", "")
+			urls = append(urls, link)
 			p := tgbotapi.NewInputMediaPhoto(link)
 			if c, ok := data.(map[string]interface{})["caption"]; ok {
 				p.Caption = c.(string)
@@ -175,6 +187,7 @@ func HandelGallery(files map[string]interface{}, galleryDataItems []interface{},
 		case "AnimatedImage":
 			link := image["s"].(map[string]interface{})["mp4"].(string)
 			link = strings.ReplaceAll(link, "amp;", "")
+			urls = append(urls, link)
 			v := tgbotapi.NewInputMediaVideo(link)
 			if c, ok := data.(map[string]interface{})["caption"]; ok {
 				v.Caption = c.(string)
@@ -196,13 +209,16 @@ func HandelGallery(files map[string]interface{}, galleryDataItems []interface{},
 			} else if w >= 426 && h >= 240 {
 				res = "240"
 			}
-			v := tgbotapi.NewInputMediaVideo("https://v.redd.it/" + id + "/DASH_" + res + ".mp4")
+			link := "https://v.redd.it/" + id + "/DASH_" + res + ".mp4"
+			urls = append(urls, link)
+			v := tgbotapi.NewInputMediaVideo(link)
 			if c, ok := data.(map[string]interface{})["caption"]; ok {
 				v.Caption = c.(string)
 			}
 			fileConfigs = append(fileConfigs, v)
 		default:
 			_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot get one of the files because this type is not supported: "+dataType))
+			log.Println("Unknown type in send gallery:", dataType)
 		}
 	}
 	// upload all of them to telegram
@@ -225,12 +241,16 @@ func HandelGallery(files map[string]interface{}, galleryDataItems []interface{},
 		_, err = bot.Send(tgbotapi.NewMediaGroup(id, fileConfigs))
 	}
 	if err != nil {
-		_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot upload files: "+err.Error()))
+		msg := tgbotapi.NewMessage(id, "Cannot upload files: "+err.Error()+" \nHere are the direct urls to files:")
+		for _, u := range urls {
+			msg.Text += "\n" + u
+		}
+		_, _ = bot.Send(msg)
 		log.Println("Cannot upload file:", err)
 	}
 }
 
-// download and send the gif
+// Download and send the gif
 func HandleGifFinal(gifUrl, title string, id int64) {
 	firstMessage, _ := bot.Send(tgbotapi.NewMessage(id, "Downloading GIF..."))
 	defer bot.Send(tgbotapi.NewDeleteMessage(id, firstMessage.MessageID))
@@ -238,14 +258,19 @@ func HandleGifFinal(gifUrl, title string, id int64) {
 	tmpFile, err := ioutil.TempFile("", "*.mp4")
 	if err != nil {
 		log.Println("Cannot create temp file:", err)
-		_, _ = bot.Send(tgbotapi.NewMessage(id, "internal error"))
+		_, _ = bot.Send(tgbotapi.NewMessage(id, "internal error: cannot create temp file"))
 		return
 	}
 	defer os.Remove(tmpFile.Name()) // clean up
 	// download the file
 	err = DownloadFile(gifUrl, tmpFile)
 	if err != nil {
-		_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot download file: "+err.Error()))
+		_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot download file: "+err.Error()+"\nHere is the link to file: "+gifUrl))
+		return
+	}
+	// check file size
+	if !CheckFileSize(tmpFile.Name(), RegularMaxUploadSize) {
+		_, _ = bot.Send(tgbotapi.NewMessage(id, "This file is too big to upload it on telegram!\nHere is the link to file: "+gifUrl))
 		return
 	}
 	// upload it
@@ -253,33 +278,34 @@ func HandleGifFinal(gifUrl, title string, id int64) {
 	msg.Caption = title
 	_, err = bot.Send(msg)
 	if err != nil {
-		_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot upload file: "+err.Error()))
+		_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot upload file: "+err.Error()+"\nHere is the link to file: "+gifUrl))
 		log.Println("Cannot upload file:", err)
 		return
 	}
 }
 
+// Downloads the video/audio from reddit and uploads it to Telegram
 func HandleVideoFinal(vidUrl, title string, id int64) {
 	infoMessage, _ := bot.Send(tgbotapi.NewMessage(id, "Downloading Video..."))
 	// maybe add filename later?
 	vidFile, err := ioutil.TempFile("", "*.mp4")
 	if err != nil {
 		log.Println("Cannot create temp file:", err)
-		_, _ = bot.Send(tgbotapi.NewMessage(id, "internal error"))
+		_, _ = bot.Send(tgbotapi.NewMessage(id, "internal error: cannot create temp file"))
 		return
 	}
 	defer os.Remove(vidFile.Name())
 	audFile, err := ioutil.TempFile("", "*.mp4")
 	if err != nil {
 		log.Println("Cannot create temp file:", err)
-		_, _ = bot.Send(tgbotapi.NewMessage(id, "internal error"))
+		_, _ = bot.Send(tgbotapi.NewMessage(id, "internal error: cannot create temp file"))
 		return
 	}
 	defer os.Remove(audFile.Name())
 	// download the video
 	err = DownloadFile(vidUrl, vidFile)
 	if err != nil {
-		_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot download file: "+err.Error()))
+		_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot download file: "+err.Error()+"\nHere is the link to video: "+vidUrl))
 		return
 	}
 	// download the audio if available
@@ -297,8 +323,7 @@ func HandleVideoFinal(vidUrl, title string, id int64) {
 		// check ffmpeg first
 		if !CheckFfmpegExists() {
 			log.Println("ffmpeg not found!")
-			_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot convert video: ffmpeg is not installed on server;\nHere is the link to video: "+vidUrl+
-				"\nAnd here is the audio: "+audioUrl))
+			_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot convert video: ffmpeg is not installed on server;\nHere is the link to video: "+vidUrl+"\nAnd here is the audio: "+audioUrl))
 			return
 		}
 		// convert
@@ -317,28 +342,20 @@ func HandleVideoFinal(vidUrl, title string, id int64) {
 		if err != nil {
 			log.Println("Cannot convert video:", err)
 			log.Println(string(stderr.Bytes()))
-			_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot convert video"))
+			_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot convert video.\nHere is the link to video: "+vidUrl+"\nAnd here is the audio: "+audioUrl))
 			return
 		}
 		_, _ = bot.Send(tgbotapi.NewDeleteMessage(id, infoMessage.MessageID))
 		toUpload = finalFile.Name()
 	}
 	// before upload, check the file size
-	{
-		fi, err := os.Stat(toUpload)
-		if err != nil {
-			_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot read file on server"))
-			log.Println("Cannot read file for stats:", err)
-			return
+	if !CheckFileSize(toUpload, RegularMaxUploadSize) {
+		msg := tgbotapi.NewMessage(id, "This file is too big to upload it on telegram!\nHere is the link to video: "+vidUrl)
+		if hasAudio {
+			msg.Text += "\nHere is also the link to audio file: " + audioUrl
 		}
-		if fi.Size() > 50*1000*1000 { // for some reasons, this is not 50 * 1024 * 1024
-			msg := tgbotapi.NewMessage(id, "This file is too big to upload it on telegram!\nHere is the link to video: "+vidUrl)
-			if hasAudio {
-				msg.Text += "\nHere is also the link to audio file: " + audioUrl
-			}
-			_, _ = bot.Send(msg)
-			return
-		}
+		_, _ = bot.Send(msg)
+		return
 	}
 	// upload the file
 	infoMessage, _ = bot.Send(tgbotapi.NewMessage(id, "Uploading video..."))
@@ -346,14 +363,18 @@ func HandleVideoFinal(vidUrl, title string, id int64) {
 	msg.Caption = title
 	_, err = bot.Send(msg)
 	if err != nil {
-		_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot upload file: "+err.Error()))
+		msg := tgbotapi.NewMessage(id, "Cannot upload file: "+err.Error()+"\nHere is the link to video: "+vidUrl)
+		if hasAudio {
+			msg.Text += "\nHere is also the link to audio file: " + audioUrl
+		}
+		_, _ = bot.Send(msg)
 		log.Println("Cannot upload file:", err)
 		return
 	}
 	_, _ = bot.Send(tgbotapi.NewDeleteMessage(id, infoMessage.MessageID))
 }
 
-// this method starts when the user sends the link
+// This method starts when the user sends a link
 func StartFetch(postUrl string, id int64, msgId int) {
 	// dont crash the whole thing
 	defer func() {
@@ -533,7 +554,7 @@ func StartFetch(postUrl string, id int64, msgId int) {
 	_, _ = bot.Send(msg)
 }
 
-// generates an inline keyboard for user to choose the quality of media and stores it in cache db
+// Generates an inline keyboard for user to choose the quality of media and stores it in cache db
 func GenerateInlineKeyboardPhoto(data map[string]interface{}, title string, isGif bool) tgbotapi.InlineKeyboardMarkup {
 	var mediaType string
 	if isGif {
@@ -583,6 +604,7 @@ func GenerateInlineKeyboardPhoto(data map[string]interface{}, title string, isGi
 	}
 }
 
+// Generates an inline keyboard for user to choose the quality of media and stores it in cache db
 func GenerateInlineKeyboardVideo(vidUrl, title string) tgbotapi.InlineKeyboardMarkup {
 	m := make(map[string]string) // I store this in cache
 	var keyboard [][]tgbotapi.InlineKeyboardButton
@@ -617,15 +639,15 @@ func GenerateInlineKeyboardVideo(vidUrl, title string) tgbotapi.InlineKeyboardMa
 	}
 }
 
-// extracts the data from "source":{ "url":"https://preview.redd.it/utx00pfe4cp41.jpg?auto=webp&amp;s=de4ff82478b12df6369b8d7eeca3894f094e87e1", "width":624, "height":960 } stuff
-// first return values are url, width, height
+// Extracts the data from "source":{ "url":"https://preview.redd.it/utx00pfe4cp41.jpg?auto=webp&amp;s=de4ff82478b12df6369b8d7eeca3894f094e87e1", "width":624, "height":960 } stuff
+// First return values are url, width, height
 func ExtractLinkAndRes(data interface{}) (string, string, string) {
 	kv := data.(map[string]interface{})
 	return html.UnescapeString(kv["url"].(string)), strconv.Itoa(int(kv["width"].(float64))), strconv.Itoa(int(kv["height"].(float64)))
 }
 
-// downloads a URL's data as string
-// the user agent must change
+// Downloads a URL's data as string
+// The user agent must change
 func DownloadString(Url string) ([]byte, error) {
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", Url, nil)
@@ -645,7 +667,7 @@ func DownloadString(Url string) ([]byte, error) {
 	return ioutil.ReadAll(resp.Body)
 }
 
-// downloads a web page to file
+// Downloads a web page to file
 func DownloadFile(Url string, file *os.File) error {
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", Url, nil)
@@ -666,8 +688,18 @@ func DownloadFile(Url string, file *os.File) error {
 	return err
 }
 
-// returns true if ffmpeg is found
+// Returns true if ffmpeg is found
 func CheckFfmpegExists() bool {
 	_, err := exec.LookPath("ffmpeg")
 	return err == nil
+}
+
+// Checks the size of file before sending it to telegram
+func CheckFileSize(f string, allowed int64) bool {
+	fi, err := os.Stat(f)
+	if err != nil {
+		log.Println("Cannot get file size:", err.Error())
+		return false
+	}
+	return fi.Size() <= allowed
 }

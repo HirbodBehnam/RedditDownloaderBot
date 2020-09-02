@@ -25,3 +25,5 @@ go build main.go
 ```
 
 For running, pass the bot token as the first argument: `./bot 1234567:4TT8bAc8GHUspu3ERYn-KGcvsvGB9u_n4ddy`
+### Live bot
+Here is a live bot that I host it: [@reddit_download_bot](http://t.me/reddit_download_bot)

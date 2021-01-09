@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/PuerkitoBio/goquery"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	guuid "github.com/google/uuid"
@@ -23,15 +24,28 @@ import (
 	"time"
 )
 
+// The cache to contain the requests of each user. Will reset in 10 minutes
 var UserMedia *cache.Cache
 var bot *tgbotapi.BotAPI
 
-const VERSION = "1.4.5"
-const UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.83 Safari/537.36"
+const VERSION = "1.5.0-Beta"
+const UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"
+const ApiPoint = "https://api.reddit.com/api/info/?id=t3_%s"
 const RegularMaxUploadSize = 50 * 1000 * 1000 // these must be 1000 not 1024
 const PhotoMaxUploadSize = 10 * 1000 * 1000
 
-var QUALITY = []string{"1080", "720", "480", "360", "240", "96"} // I haven't found anything higher than 1080p
+// Files bigger than this size need a thumbnail; Otherwise the telegram will show them without one
+const NoThumbnailNeededSize = 10 * 1000 * 1000
+
+// The quality for videos
+// I haven't found anything higher than 1080p
+var QUALITY = []string{"1080", "720", "480", "360", "240", "96"}
+
+const (
+	MediaTypePicture = "0"
+	MediaTypeVideo   = "1"
+	MediaTypeGif     = "2"
+)
 
 func main() {
 	var err error
@@ -62,6 +76,11 @@ func main() {
 		if update.Message == nil { // ignore any non-Message
 			continue
 		}
+		// only text massages are allowed
+		if update.Message.Text == "" {
+			_, _ = bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Please send the reddit post link to bot"))
+			continue
+		}
 		// check if the message is command
 		if update.Message.IsCommand() {
 			switch update.Message.Command() {
@@ -76,11 +95,6 @@ func main() {
 			}
 			continue
 		}
-		// only text massages are allowed
-		if update.Message.Text == "" {
-			_, _ = bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Please send the link to bot"))
-			continue
-		}
 		go StartFetch(update.Message.Text, update.Message.Chat.ID, update.Message.MessageID)
 	}
 }
@@ -92,12 +106,12 @@ func HandleCallback(data string, id int64, msgId int) {
 	_, _ = bot.Send(tgbotapi.NewDeleteMessage(id, msgId))
 	if d, exists := UserMedia.Get(data[2:]); exists {
 		m := d.(map[string]string)
-		if m["type"] == "0" { // photo
-			HandlePhotoFinal(m[data[1:2]], m["title"], id, data[:1] == "0")
-		} else if m["type"] == "1" { // video
-			HandleVideoFinal(m[data[1:2]], m["title"], id)
-		} else { // gif; type = 2
-			HandleGifFinal(m[data[1:2]], m["title"], id)
+		if m["type"] == MediaTypePicture {
+			HandlePhotoFinal(m[data[1:2]], m["title"], m["thumbnail"], id, data[:1] == "0")
+		} else if m["type"] == MediaTypeVideo {
+			HandleVideoFinal(m[data[1:2]], m["title"], m["thumbnail"], id)
+		} else { // gif
+			HandleGifFinal(m[data[1:2]], m["title"], m["thumbnail"], id)
 		}
 		UserMedia.Delete(data[2:])
 	} else {
@@ -106,7 +120,7 @@ func HandleCallback(data string, id int64, msgId int) {
 }
 
 // Download and send the photo
-func HandlePhotoFinal(photoUrl, title string, id int64, asPhoto bool) {
+func HandlePhotoFinal(photoUrl, title, thumbnailUrl string, id int64, asPhoto bool) {
 	// get the file name
 	var fileName string
 	{
@@ -139,18 +153,40 @@ func HandlePhotoFinal(photoUrl, title string, id int64, asPhoto bool) {
 		_, _ = bot.Send(tgbotapi.NewMessage(id, "This file is too big to upload it on telegram!\nHere is the link to image: "+photoUrl))
 		return
 	}
+	// check thumbnail
+	var tmpThumbnailFile *os.File
+	if !CheckFileSize(tmpFile.Name(), NoThumbnailNeededSize) && thumbnailUrl != "" {
+		// download the thumbnail; We cannot send the link of it directly
+		tmpThumbnailFile, err = ioutil.TempFile("", "*.jpg")
+		if err != nil {
+			log.Println("Cannot create temp file for thumbnail:", err)
+			thumbnailUrl = "" // prevent the application to get the path from tmpThumbnailFile
+		} else {
+			defer os.Remove(tmpThumbnailFile.Name()) // clean up
+			err = DownloadFile(thumbnailUrl, tmpThumbnailFile)
+			if err != nil {
+				thumbnailUrl = ""
+			}
+		}
+	}
 	// send the file to telegram
 	if asPhoto {
 		msg := tgbotapi.NewPhoto(id, tmpFile.Name())
 		msg.Caption = title
+		if thumbnailUrl != "" {
+			msg.Thumb = tmpThumbnailFile.Name()
+		}
 		_, err = bot.Send(msg)
 	} else {
 		msg := tgbotapi.NewDocument(id, tmpFile.Name())
 		msg.Caption = title
+		if thumbnailUrl != "" {
+			msg.Thumb = tmpThumbnailFile.Name()
+		}
 		_, err = bot.Send(msg)
 	}
 	if err != nil {
-		_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot upload file: "+err.Error()+"\nHere is the link to image: "+photoUrl))
+		_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot upload file.\nHere is the link to image: "+photoUrl))
 		log.Println("Cannot upload file:", err)
 		return
 	}
@@ -238,7 +274,7 @@ func HandelGallery(files map[string]interface{}, galleryDataItems []interface{},
 		_, err = bot.Send(tgbotapi.NewMediaGroup(id, fileConfigs))
 	}
 	if err != nil {
-		msg := tgbotapi.NewMessage(id, "Cannot upload files: "+err.Error()+" \nHere are the direct urls to files:")
+		msg := tgbotapi.NewMessage(id, "Cannot upload files. \nHere are the direct urls to files:")
 		for _, u := range urls {
 			msg.Text += "\n" + u
 		}
@@ -248,7 +284,7 @@ func HandelGallery(files map[string]interface{}, galleryDataItems []interface{},
 }
 
 // Download and send the gif
-func HandleGifFinal(gifUrl, title string, id int64) {
+func HandleGifFinal(gifUrl, title, thumbnailUrl string, id int64) {
 	firstMessage, _ := bot.Send(tgbotapi.NewMessage(id, "Downloading GIF..."))
 	defer bot.Send(tgbotapi.NewDeleteMessage(id, firstMessage.MessageID))
 	// generate a temp file
@@ -270,19 +306,38 @@ func HandleGifFinal(gifUrl, title string, id int64) {
 		_, _ = bot.Send(tgbotapi.NewMessage(id, "This file is too big to upload it on telegram!\nHere is the link to file: "+gifUrl))
 		return
 	}
+	// check thumbnail
+	var tmpThumbnailFile *os.File
+	if !CheckFileSize(tmpFile.Name(), NoThumbnailNeededSize) && thumbnailUrl != "" {
+		// download the thumbnail; We cannot send the link of it directly
+		tmpThumbnailFile, err = ioutil.TempFile("", "*.jpg")
+		if err != nil {
+			log.Println("Cannot create temp file for thumbnail:", err)
+			thumbnailUrl = "" // prevent the application to get the path from tmpThumbnailFile
+		} else {
+			defer os.Remove(tmpThumbnailFile.Name()) // clean up
+			err = DownloadFile(thumbnailUrl, tmpThumbnailFile)
+			if err != nil {
+				thumbnailUrl = ""
+			}
+		}
+	}
 	// upload it
 	msg := tgbotapi.NewAnimation(id, tmpFile.Name())
 	msg.Caption = title
+	if thumbnailUrl != "" {
+		msg.Thumb = tmpThumbnailFile.Name()
+	}
 	_, err = bot.Send(msg)
 	if err != nil {
-		_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot upload file: "+err.Error()+"\nHere is the link to file: "+gifUrl))
+		_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot upload file.\nHere is the link to file: "+gifUrl))
 		log.Println("Cannot upload file:", err)
 		return
 	}
 }
 
 // Downloads the video/audio from reddit and uploads it to Telegram
-func HandleVideoFinal(vidUrl, title string, id int64) {
+func HandleVideoFinal(vidUrl, title, thumbnailUrl string, id int64) {
 	infoMessage, _ := bot.Send(tgbotapi.NewMessage(id, "Downloading Video..."))
 	// maybe add filename later?
 	vidFile, err := ioutil.TempFile("", "*.mp4")
@@ -354,13 +409,32 @@ func HandleVideoFinal(vidUrl, title string, id int64) {
 		_, _ = bot.Send(msg)
 		return
 	}
+	// check thumbnail
+	var tmpThumbnailFile *os.File
+	if !CheckFileSize(toUpload, NoThumbnailNeededSize) && thumbnailUrl != "" { // add thumbnail if the size is more than 10MB
+		// download the thumbnail; We cannot send the link of it directly
+		tmpThumbnailFile, err = ioutil.TempFile("", "*.jpg")
+		if err != nil {
+			log.Println("Cannot create temp file for thumbnail:", err)
+			thumbnailUrl = "" // prevent the application to get the path from tmpThumbnailFile
+		} else {
+			defer os.Remove(tmpThumbnailFile.Name()) // clean up
+			err = DownloadFile(thumbnailUrl, tmpThumbnailFile)
+			if err != nil {
+				thumbnailUrl = ""
+			}
+		}
+	}
 	// upload the file
 	infoMessage, _ = bot.Send(tgbotapi.NewMessage(id, "Uploading video..."))
 	msg := tgbotapi.NewVideo(id, toUpload)
 	msg.Caption = title
+	if thumbnailUrl != "" {
+		msg.Thumb = tmpThumbnailFile.Name()
+	}
 	_, err = bot.Send(msg)
 	if err != nil {
-		msg := tgbotapi.NewMessage(id, "Cannot upload file: "+err.Error()+"\nHere is the link to video: "+vidUrl)
+		msg := tgbotapi.NewMessage(id, "Cannot upload file.\nHere is the link to video: "+vidUrl)
 		if hasAudio {
 			msg.Text += "\nHere is also the link to audio file: " + audioUrl
 		}
@@ -406,7 +480,7 @@ func StartFetch(postUrl string, id int64, msgId int) {
 		postId = split[4]
 	}
 	// now download the json
-	rawJson, err := DownloadString("https://api.reddit.com/api/info/?id=t3_" + postId)
+	rawJson, err := DownloadString(fmt.Sprintf(ApiPoint, postId))
 	if err != nil {
 		_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot download page: "+err.Error()))
 		return
@@ -443,6 +517,15 @@ func StartFetch(postUrl string, id int64, msgId int) {
 	// get the title
 	title := root["title"].(string)
 	title = html.UnescapeString(title)
+	// check thumbnail; This must be done before checking cross posts
+	thumbnailUrl := ""
+	if t, ok := root["thumbnail"]; ok {
+		thumbnailUrl = t.(string)
+		// check the url; Sometimes, the value of this is default
+		if !IsUrl(thumbnailUrl) {
+			thumbnailUrl = ""
+		}
+	}
 	// check cross post
 	if _, crossPost := root["crosspost_parent_list"]; crossPost {
 		c := root["crosspost_parent_list"].([]interface{})
@@ -463,7 +546,7 @@ func StartFetch(postUrl string, id int64, msgId int) {
 					gifDownloadUrl := root["url"].(string)
 					lastSlash := strings.LastIndex(gifDownloadUrl, "/")
 					gifDownloadUrl = gifDownloadUrl[:lastSlash+1] + "download" + gifDownloadUrl[lastSlash:]
-					HandleGifFinal(gifDownloadUrl, title, id)
+					HandleGifFinal(gifDownloadUrl, title, thumbnailUrl, id)
 					return
 				}
 				msg.ReplyMarkup = GenerateInlineKeyboardPhoto(root["preview"].(map[string]interface{})["images"].([]interface{})[0].(map[string]interface{})["variants"].(map[string]interface{})["mp4"].(map[string]interface{}), title, true) // this is normal reddit gif
@@ -473,18 +556,18 @@ func StartFetch(postUrl string, id int64, msgId int) {
 		case "link": // link
 			u := root["url"].(string)
 			if u[len(u)-4:] == "gifv" && strings.HasPrefix(u, "https://i.imgur.com") { // imgur gif
-				HandleGifFinal(u[:len(u)-4]+"mp4", title, id)
+				HandleGifFinal(u[:len(u)-4]+"mp4", title, thumbnailUrl, id)
 				return
 			}
 			msg.Text = html.UnescapeString(title + "\n" + u) // a normal link
 		case "hosted:video": // v.reddit
 			msg.Text = "Please select the quality"
 			vid := root["media"].(map[string]interface{})["reddit_video"].(map[string]interface{})
-			keyboard := GenerateInlineKeyboardVideo(vid["fallback_url"].(string), title)
+			keyboard := GenerateInlineKeyboardVideo(vid["fallback_url"].(string), title, thumbnailUrl)
 			if keyboard.InlineKeyboard != nil {
 				msg.ReplyMarkup = keyboard
 			} else { // just dl and send the main video
-				HandleVideoFinal(vid["fallback_url"].(string), title, id)
+				HandleVideoFinal(vid["fallback_url"].(string), title, thumbnailUrl, id)
 				return
 			}
 		case "rich:video": // files hosted other than reddit; This bot currently supports gfycat.com
@@ -502,7 +585,7 @@ func StartFetch(postUrl string, id int64, msgId int) {
 					// check reddit_video_preview
 					if vid, hasVid := root["preview"].(map[string]interface{})["reddit_video_preview"]; hasVid {
 						if u, hasUrl := vid.(map[string]interface{})["fallback_url"]; hasUrl {
-							msg.ReplyMarkup = GenerateInlineKeyboardVideo(u.(string), title)
+							msg.ReplyMarkup = GenerateInlineKeyboardVideo(u.(string), title, thumbnailUrl)
 							break
 						}
 					}
@@ -523,7 +606,7 @@ func StartFetch(postUrl string, id int64, msgId int) {
 					doc.Find("meta").Each(func(i int, s *goquery.Selection) {
 						if name, _ := s.Attr("property"); name == "og:video" {
 							videoUrl, _ := s.Attr("content")
-							HandleVideoFinal(videoUrl, title, id)
+							HandleVideoFinal(videoUrl, title, thumbnailUrl, id)
 						}
 					})
 					return
@@ -590,9 +673,9 @@ func GenerateInlineKeyboardPhoto(data map[string]interface{}, title string, isGi
 		}
 	}
 	if isGif {
-		m["type"] = "2" // gif type
+		m["type"] = MediaTypeGif
 	} else {
-		m["type"] = "0" // photo type
+		m["type"] = MediaTypePicture
 	}
 	m["title"] = title
 	UserMedia.Set(id, m, cache.DefaultExpiration)
@@ -602,7 +685,7 @@ func GenerateInlineKeyboardPhoto(data map[string]interface{}, title string, isGi
 }
 
 // Generates an inline keyboard for user to choose the quality of media and stores it in cache db
-func GenerateInlineKeyboardVideo(vidUrl, title string) tgbotapi.InlineKeyboardMarkup {
+func GenerateInlineKeyboardVideo(vidUrl, title, thumbnailUrl string) tgbotapi.InlineKeyboardMarkup {
 	m := make(map[string]string) // I store this in cache
 	var keyboard [][]tgbotapi.InlineKeyboardButton
 	// at first generate a guid for cache
@@ -628,8 +711,9 @@ func GenerateInlineKeyboardVideo(vidUrl, title string) tgbotapi.InlineKeyboardMa
 			}
 		}
 	}
-	m["type"] = "1" // video
+	m["type"] = MediaTypeVideo
 	m["title"] = title
+	m["thumbnail"] = thumbnailUrl
 	UserMedia.Set(id, m, cache.DefaultExpiration)
 	return tgbotapi.InlineKeyboardMarkup{
 		InlineKeyboard: keyboard,
@@ -699,4 +783,11 @@ func CheckFileSize(f string, allowed int64) bool {
 		return false
 	}
 	return fi.Size() <= allowed
+}
+
+// Checks if a string is a url
+// From https://stackoverflow.com/a/55551215/4213397
+func IsUrl(str string) bool {
+	u, err := url.Parse(str)
+	return err == nil && u.Scheme != "" && u.Host != ""
 }

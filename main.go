@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/PuerkitoBio/goquery"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	guuid "github.com/google/uuid"
 	"github.com/patrickmn/go-cache"
 	"html"
@@ -50,10 +50,7 @@ func main() {
 	log.Println("Bot authorized on account", bot.Self.UserName)
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
-	updates, err := bot.GetUpdatesChan(u)
-	if err != nil {
-		log.Fatal("Cannot get updates channel:", err.Error())
-	}
+	updates := bot.GetUpdatesChan(u)
 
 	UserMedia = cache.New(5*time.Minute, 10*time.Minute)
 	// fetch updates
@@ -92,7 +89,7 @@ func main() {
 func HandleCallback(data string, id int64, msgId int) {
 	// at first get the url from cache
 	// the first char is requested type (media or file)
-	_, _ = bot.DeleteMessage(tgbotapi.NewDeleteMessage(id, msgId))
+	_, _ = bot.Send(tgbotapi.NewDeleteMessage(id, msgId))
 	if d, exists := UserMedia.Get(data[2:]); exists {
 		m := d.(map[string]string)
 		if m["type"] == "0" { // photo
@@ -144,11 +141,11 @@ func HandlePhotoFinal(photoUrl, title string, id int64, asPhoto bool) {
 	}
 	// send the file to telegram
 	if asPhoto {
-		msg := tgbotapi.NewPhotoUpload(id, tmpFile.Name())
+		msg := tgbotapi.NewPhoto(id, tmpFile.Name())
 		msg.Caption = title
 		_, err = bot.Send(msg)
 	} else {
-		msg := tgbotapi.NewDocumentUpload(id, tmpFile.Name())
+		msg := tgbotapi.NewDocument(id, tmpFile.Name())
 		msg.Caption = title
 		_, err = bot.Send(msg)
 	}
@@ -233,9 +230,9 @@ func HandelGallery(files map[string]interface{}, galleryDataItems []interface{},
 	fileConfigs = fileConfigs[i*10:]
 	if len(fileConfigs) == 1 {
 		if reflect.TypeOf(fileConfigs[0]).Name() == "InputMediaVideo" {
-			_, err = bot.Send(tgbotapi.NewVideoShare(id, fileConfigs[0].(tgbotapi.InputMediaVideo).Media))
+			_, err = bot.Send(tgbotapi.NewVideo(id, fileConfigs[0].(tgbotapi.InputMediaVideo).Media))
 		} else { // InputMediaPhoto
-			_, err = bot.Send(tgbotapi.NewPhotoShare(id, fileConfigs[0].(tgbotapi.InputMediaPhoto).Media))
+			_, err = bot.Send(tgbotapi.NewPhoto(id, fileConfigs[0].(tgbotapi.InputMediaPhoto).Media))
 		}
 	} else if len(fileConfigs) > 1 {
 		_, err = bot.Send(tgbotapi.NewMediaGroup(id, fileConfigs))
@@ -274,7 +271,7 @@ func HandleGifFinal(gifUrl, title string, id int64) {
 		return
 	}
 	// upload it
-	msg := tgbotapi.NewAnimationUpload(id, tmpFile.Name())
+	msg := tgbotapi.NewAnimation(id, tmpFile.Name())
 	msg.Caption = title
 	_, err = bot.Send(msg)
 	if err != nil {
@@ -359,7 +356,7 @@ func HandleVideoFinal(vidUrl, title string, id int64) {
 	}
 	// upload the file
 	infoMessage, _ = bot.Send(tgbotapi.NewMessage(id, "Uploading video..."))
-	msg := tgbotapi.NewVideoUpload(id, toUpload)
+	msg := tgbotapi.NewVideo(id, toUpload)
 	msg.Caption = title
 	_, err = bot.Send(msg)
 	if err != nil {

@@ -5,7 +5,7 @@ A telegram bot to download the reddit posts.
 * Download and send photos in `i.redd.it`
 * Download and send GIFs
 * Download videos on `v.redd.it` and merge the audio with them using [FFmpeg](https://www.ffmpeg.org/)
-* Donwload galleries (Not well tested, also max file size is 10 MB)
+* Download galleries (Not well tested)
 * Choose the quality of photos or videos (Except galleries)
 ## What this bot can't do?
 * Upload files that are larger than 50MB

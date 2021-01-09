@@ -202,14 +202,24 @@ func HandlePhotoFinal(photoUrl, title, thumbnailUrl string, id int64, asPhoto bo
 
 // Handles gallery posts like this: https://www.reddit.com/r/blender/comments/ibd7uc/finality/
 func HandelGallery(files map[string]interface{}, galleryDataItems []interface{}, id int64) {
+	statusMessage, _ := bot.Send(tgbotapi.NewMessage(id, "Downloading gallery..."))
+	defer bot.Send(tgbotapi.NewDeleteMessage(id, statusMessage.MessageID))
 	var err error
 	// loop and download all files
-	fileConfigs := make([]interface{}, 0)
-	urls := make([]string, 0)
+	fileConfigs := make([]interface{}, 0, len(galleryDataItems))
+	filePaths := make([]string, 0, len(galleryDataItems))
+	urls := make([]string, 0, len(galleryDataItems))
+	haveFailedItems := false
+	// create the cleanup function
+	defer func() {
+		for _, file := range filePaths {
+			_ = os.Remove(file)
+		}
+	}()
 	for _, data := range galleryDataItems {
-		imageRoot := files[data.(map[string]interface{})["media_id"].(string)]
+		galleryRoot := files[data.(map[string]interface{})["media_id"].(string)]
 		// extract the url
-		image := imageRoot.(map[string]interface{})
+		image := galleryRoot.(map[string]interface{})
 		if image["status"].(string) != "valid" { // i have not encountered anything else except valid so far
 			continue
 		}
@@ -220,20 +230,56 @@ func HandelGallery(files map[string]interface{}, galleryDataItems []interface{},
 			// for some reasons, i have to remove all "amp;" from the url in order to make this work
 			link = strings.ReplaceAll(link, "amp;", "")
 			urls = append(urls, link)
-			p := tgbotapi.NewInputMediaPhoto(link)
+			// download the file
+			tmpFile, err := ioutil.TempFile("", "*")
+			if err != nil {
+				haveFailedItems = true
+				continue
+			}
+			filePaths = append(filePaths, tmpFile.Name())
+			err = DownloadFile(link, tmpFile)
+			if err != nil {
+				haveFailedItems = true
+				continue
+			}
+			// send the file
+			p := tgbotapi.NewInputMediaPhoto(tmpFile.Name())
+			_ = tmpFile.Close() // close the file I guess?
+			p.Caption = ""
 			if c, ok := data.(map[string]interface{})["caption"]; ok {
 				p.Caption = c.(string)
 			}
-			fileConfigs = append(fileConfigs, p) // TODO: this is a bad idea. I have to wait for multiple uploads in the bot api and fix this. Read more: https://github.com/go-telegram-bot-api/telegram-bot-api/pull/356
+			if c, ok := data.(map[string]interface{})["outbound_url"]; ok {
+				p.Caption += "\n" + c.(string)
+			}
+			fileConfigs = append(fileConfigs, p)
 		case "AnimatedImage":
 			link := image["s"].(map[string]interface{})["mp4"].(string)
 			link = strings.ReplaceAll(link, "amp;", "")
 			urls = append(urls, link)
-			v := tgbotapi.NewInputMediaVideo(link)
+			// download the file
+			tmpFile, err := ioutil.TempFile("", "*")
+			if err != nil {
+				haveFailedItems = true
+				continue
+			}
+			filePaths = append(filePaths, tmpFile.Name())
+			err = DownloadFile(link, tmpFile)
+			if err != nil {
+				haveFailedItems = true
+				continue
+			}
+			// set the file path
+			v := tgbotapi.NewInputMediaVideo(tmpFile.Name())
+			_ = tmpFile.Close()
+			v.Caption = ""
 			if c, ok := data.(map[string]interface{})["caption"]; ok {
 				v.Caption = c.(string)
 			}
-			fileConfigs = append(fileConfigs, v) // TODO: this is a bad idea. I have to wait for multiple uploads in the bot api and fix this. Read more: https://github.com/go-telegram-bot-api/telegram-bot-api/pull/356
+			if c, ok := data.(map[string]interface{})["outbound_url"]; ok {
+				v.Caption += "\n" + c.(string)
+			}
+			fileConfigs = append(fileConfigs, v)
 		case "RedditVideo": // TODO: Because of api limitations i cannot download the audio file as well
 			id := image["id"].(string)
 			w := image["x"].(float64)
@@ -252,7 +298,60 @@ func HandelGallery(files map[string]interface{}, galleryDataItems []interface{},
 			}
 			link := "https://v.redd.it/" + id + "/DASH_" + res + ".mp4"
 			urls = append(urls, link)
-			v := tgbotapi.NewInputMediaVideo(link)
+			// download the video
+			tmpVideo, err := ioutil.TempFile("", "*.mp4")
+			if err != nil {
+				haveFailedItems = true
+				continue
+			}
+			filePaths = append(filePaths, tmpVideo.Name())
+			err = DownloadFile(link, tmpVideo)
+			if err != nil {
+				haveFailedItems = true
+				continue
+			}
+			// download audio
+			func() {
+				// do not do anything if ffmpeg doesn't exists
+				if !CheckFfmpegExists() {
+					return
+				}
+				// get the audio url
+				audioUrl := link[:strings.LastIndex(link, "/")] + "/DASH_audio.mp4" // base url; no need to check old format
+				// download the audio file
+				audFile, err := ioutil.TempFile("", "*.mp4")
+				if err != nil {
+					return
+				}
+				defer os.Remove(audFile.Name()) // do not forget the clean up!
+				err = DownloadFile(audioUrl, audFile)
+				if err != nil {
+					return
+				}
+				// merge them
+				finalFile, err := ioutil.TempFile("", "*.mp4")
+				if err != nil {
+					return
+				}
+				cmd := exec.Command("ffmpeg", "-i", tmpVideo.Name(), "-i", audFile.Name(), "-c", "copy", finalFile.Name(), "-y")
+				var stderr bytes.Buffer
+				cmd.Stderr = &stderr
+				err = cmd.Run()
+				if err != nil {
+					log.Println("Cannot convert video:", err)
+					log.Println(string(stderr.Bytes()))
+					return
+				}
+				// if everything is good, then remove the video file and replace it with final file
+				_ = tmpVideo.Close()
+				_ = os.Remove(tmpVideo.Name())
+				tmpVideo = finalFile
+				filePaths[len(filePaths)-1] = finalFile.Name() // replace the name to clean up after everything
+				// also note that the audio file is deferred so it will be deleted
+			}()
+			// upload it
+			v := tgbotapi.NewInputMediaVideo(tmpVideo.Name())
+			_ = tmpVideo.Close()
 			if c, ok := data.(map[string]interface{})["caption"]; ok {
 				v.Caption = c.(string)
 			}
@@ -262,12 +361,15 @@ func HandelGallery(files map[string]interface{}, galleryDataItems []interface{},
 			log.Println("Unknown type in send gallery:", dataType)
 		}
 	}
+	// change status
+	_, _ = bot.Send(tgbotapi.NewDeleteMessage(id, statusMessage.MessageID))
+	statusMessage, _ = bot.Send(tgbotapi.NewMessage(id, "Uploading gallery..."))
 	// upload all of them to telegram
 	i := 0
 	for ; i < len(fileConfigs)/10; i++ {
-		_, err = bot.Send(tgbotapi.NewMediaGroup(id, fileConfigs[i*10:(i+1)*10]))
+		_, err = bot.SendMediaGroup(tgbotapi.NewMediaGroup(id, fileConfigs[i*10:(i+1)*10]))
 		if err != nil {
-			_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot upload files: "+err.Error()))
+			haveFailedItems = true
 			log.Println("Cannot upload file:", err)
 		}
 	}
@@ -279,15 +381,18 @@ func HandelGallery(files map[string]interface{}, galleryDataItems []interface{},
 			_, err = bot.Send(tgbotapi.NewPhoto(id, fileConfigs[0].(tgbotapi.InputMediaPhoto).Media))
 		}
 	} else if len(fileConfigs) > 1 {
-		_, err = bot.Send(tgbotapi.NewMediaGroup(id, fileConfigs))
+		_, err = bot.SendMediaGroup(tgbotapi.NewMediaGroup(id, fileConfigs))
 	}
 	if err != nil {
-		msg := tgbotapi.NewMessage(id, "Cannot upload files. \nHere are the direct urls to files:")
+		haveFailedItems = true
+		log.Println("Cannot upload file:", err)
+	}
+	if haveFailedItems {
+		msg := tgbotapi.NewMessage(id, "Cannot upload some files.\nHere are the direct urls to files:")
 		for _, u := range urls {
 			msg.Text += "\n" + u
 		}
 		_, _ = bot.Send(msg)
-		log.Println("Cannot upload file:", err)
 	}
 }
 

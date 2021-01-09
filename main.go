@@ -101,6 +101,12 @@ func main() {
 
 // This method runs when the user chooses one of the resolutions
 func HandleCallback(data string, id int64, msgId int) {
+	// dont crash the whole application
+	defer func() {
+		if r := recover(); r != nil {
+			_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot get data. (panic)"))
+		}
+	}()
 	// at first get the url from cache
 	// the first char is requested type (media or file)
 	_, _ = bot.Send(tgbotapi.NewDeleteMessage(id, msgId))
@@ -168,6 +174,8 @@ func HandlePhotoFinal(photoUrl, title, thumbnailUrl string, id int64, asPhoto bo
 				thumbnailUrl = ""
 			}
 		}
+	} else {
+		thumbnailUrl = ""
 	}
 	// send the file to telegram
 	if asPhoto {
@@ -321,6 +329,8 @@ func HandleGifFinal(gifUrl, title, thumbnailUrl string, id int64) {
 				thumbnailUrl = ""
 			}
 		}
+	} else {
+		thumbnailUrl = ""
 	}
 	// upload it
 	msg := tgbotapi.NewAnimation(id, tmpFile.Name())
@@ -424,6 +434,8 @@ func HandleVideoFinal(vidUrl, title, thumbnailUrl string, id int64) {
 				thumbnailUrl = ""
 			}
 		}
+	} else {
+		thumbnailUrl = ""
 	}
 	// upload the file
 	infoMessage, _ = bot.Send(tgbotapi.NewMessage(id, "Uploading video..."))
@@ -447,7 +459,7 @@ func HandleVideoFinal(vidUrl, title, thumbnailUrl string, id int64) {
 
 // This method starts when the user sends a link
 func StartFetch(postUrl string, id int64, msgId int) {
-	// dont crash the whole thing
+	// dont crash the whole application
 	defer func() {
 		if r := recover(); r != nil {
 			log.Printf("Recovering from panic in StartFetch error is: %v, The url was: %v\n", r, postUrl)

@@ -280,7 +280,7 @@ func HandelGallery(files map[string]interface{}, galleryDataItems []interface{},
 				v.Caption += "\n" + c.(string)
 			}
 			fileConfigs = append(fileConfigs, v)
-		case "RedditVideo": // TODO: Because of api limitations i cannot download the audio file as well
+		case "RedditVideo":
 			id := image["id"].(string)
 			w := image["x"].(float64)
 			h := image["y"].(float64)

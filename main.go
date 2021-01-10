@@ -145,6 +145,7 @@ func HandlePhotoFinal(photoUrl, title, thumbnailUrl string, id int64, asPhoto bo
 		return
 	}
 	defer os.Remove(tmpFile.Name()) // clean up
+	defer tmpFile.Close()
 	// download the file
 	err = DownloadFile(photoUrl, tmpFile)
 	if err != nil {
@@ -169,6 +170,7 @@ func HandlePhotoFinal(photoUrl, title, thumbnailUrl string, id int64, asPhoto bo
 			thumbnailUrl = "" // prevent the application to get the path from tmpThumbnailFile
 		} else {
 			defer os.Remove(tmpThumbnailFile.Name()) // clean up
+			defer tmpThumbnailFile.Close()
 			err = DownloadFile(thumbnailUrl, tmpThumbnailFile)
 			if err != nil {
 				thumbnailUrl = ""
@@ -203,7 +205,6 @@ func HandlePhotoFinal(photoUrl, title, thumbnailUrl string, id int64, asPhoto bo
 // Handles gallery posts like this: https://www.reddit.com/r/blender/comments/ibd7uc/finality/
 func HandelGallery(files map[string]interface{}, galleryDataItems []interface{}, id int64) {
 	statusMessage, _ := bot.Send(tgbotapi.NewMessage(id, "Downloading gallery..."))
-	defer bot.Send(tgbotapi.NewDeleteMessage(id, statusMessage.MessageID))
 	var err error
 	// loop and download all files
 	fileConfigs := make([]interface{}, 0, len(galleryDataItems))
@@ -211,11 +212,6 @@ func HandelGallery(files map[string]interface{}, galleryDataItems []interface{},
 	urls := make([]string, 0, len(galleryDataItems))
 	haveFailedItems := false
 	// create the cleanup function
-	defer func() {
-		for _, file := range filePaths {
-			_ = os.Remove(file)
-		}
-	}()
 	for _, data := range galleryDataItems {
 		galleryRoot := files[data.(map[string]interface{})["media_id"].(string)]
 		// extract the url
@@ -324,6 +320,7 @@ func HandelGallery(files map[string]interface{}, galleryDataItems []interface{},
 					return
 				}
 				defer os.Remove(audFile.Name()) // do not forget the clean up!
+				defer audFile.Close()
 				err = DownloadFile(audioUrl, audFile)
 				if err != nil {
 					return
@@ -340,6 +337,8 @@ func HandelGallery(files map[string]interface{}, galleryDataItems []interface{},
 				if err != nil {
 					log.Println("Cannot convert video:", err)
 					log.Println(string(stderr.Bytes()))
+					finalFile.Close()
+					os.Remove(finalFile.Name())
 					return
 				}
 				// if everything is good, then remove the video file and replace it with final file
@@ -348,6 +347,7 @@ func HandelGallery(files map[string]interface{}, galleryDataItems []interface{},
 				tmpVideo = finalFile
 				filePaths[len(filePaths)-1] = finalFile.Name() // replace the name to clean up after everything
 				// also note that the audio file is deferred so it will be deleted
+				// also no need to close the finalFile, because it will be closed after this function
 			}()
 			// upload it
 			v := tgbotapi.NewInputMediaVideo(tmpVideo.Name())
@@ -394,6 +394,10 @@ func HandelGallery(files map[string]interface{}, galleryDataItems []interface{},
 		}
 		_, _ = bot.Send(msg)
 	}
+	_, _ = bot.Send(tgbotapi.NewDeleteMessage(id, statusMessage.MessageID))
+	for _, file := range filePaths { // remove temp files
+		_ = os.Remove(file)
+	}
 }
 
 // Download and send the gif
@@ -408,6 +412,7 @@ func HandleGifFinal(gifUrl, title, thumbnailUrl string, id int64) {
 		return
 	}
 	defer os.Remove(tmpFile.Name()) // clean up
+	defer tmpFile.Close()
 	// download the file
 	err = DownloadFile(gifUrl, tmpFile)
 	if err != nil {
@@ -429,6 +434,7 @@ func HandleGifFinal(gifUrl, title, thumbnailUrl string, id int64) {
 			thumbnailUrl = "" // prevent the application to get the path from tmpThumbnailFile
 		} else {
 			defer os.Remove(tmpThumbnailFile.Name()) // clean up
+			defer tmpThumbnailFile.Close()
 			err = DownloadFile(thumbnailUrl, tmpThumbnailFile)
 			if err != nil {
 				thumbnailUrl = ""
@@ -462,6 +468,7 @@ func HandleVideoFinal(vidUrl, title, thumbnailUrl string, id int64) {
 		return
 	}
 	defer os.Remove(vidFile.Name())
+	defer vidFile.Close()
 	audFile, err := ioutil.TempFile("", "*.mp4")
 	if err != nil {
 		log.Println("Cannot create temp file:", err)
@@ -469,6 +476,7 @@ func HandleVideoFinal(vidUrl, title, thumbnailUrl string, id int64) {
 		return
 	}
 	defer os.Remove(audFile.Name())
+	defer audFile.Close()
 	// download the video
 	err = DownloadFile(vidUrl, vidFile)
 	if err != nil {
@@ -502,6 +510,7 @@ func HandleVideoFinal(vidUrl, title, thumbnailUrl string, id int64) {
 			return
 		}
 		defer os.Remove(finalFile.Name())
+		defer finalFile.Close()
 		cmd := exec.Command("ffmpeg", "-i", vidFile.Name(), "-i", audFile.Name(), "-c", "copy", finalFile.Name(), "-y")
 		var stderr bytes.Buffer
 		cmd.Stderr = &stderr
@@ -534,6 +543,7 @@ func HandleVideoFinal(vidUrl, title, thumbnailUrl string, id int64) {
 			thumbnailUrl = "" // prevent the application to get the path from tmpThumbnailFile
 		} else {
 			defer os.Remove(tmpThumbnailFile.Name()) // clean up
+			defer tmpThumbnailFile.Close()
 			err = DownloadFile(thumbnailUrl, tmpThumbnailFile)
 			if err != nil {
 				thumbnailUrl = ""
@@ -847,7 +857,7 @@ func ExtractLinkAndRes(data interface{}) (string, string, string) {
 // Downloads a URL's data as string
 // The user agent must change
 func DownloadString(Url string) ([]byte, error) {
-	client := &http.Client{}
+	client := http.Client{}
 	req, err := http.NewRequest("GET", Url, nil)
 	if err != nil {
 		return nil, err
@@ -867,7 +877,7 @@ func DownloadString(Url string) ([]byte, error) {
 
 // Downloads a web page to file
 func DownloadFile(Url string, file *os.File) error {
-	client := &http.Client{}
+	client := http.Client{}
 	req, err := http.NewRequest("GET", Url, nil)
 	if err != nil {
 		return err

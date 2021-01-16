@@ -28,7 +28,7 @@ import (
 var UserMedia *cache.Cache
 var bot *tgbotapi.BotAPI
 
-const VERSION = "1.5.0-Beta"
+const VERSION = "1.5.0"
 const UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"
 const ApiPoint = "https://api.reddit.com/api/info/?id=t3_%s"
 const RegularMaxUploadSize = 50 * 1000 * 1000 // these must be 1000 not 1024

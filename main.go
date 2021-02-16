@@ -589,7 +589,7 @@ func StartFetch(postUrl string, id int64, msgId int) {
 		lines := strings.Split(postUrl, "\n")
 		for _, line := range lines {
 			u, _ = url.Parse(line)
-			if u != nil && (u.Host == "www.reddit.com" || u.Host == "reddit.com") {
+			if u != nil && (u.Host == "www.reddit.com" || u.Host == "reddit.com" || u.Host == "old.reddit.com") {
 				postUrl = line
 				break
 			}

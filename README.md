@@ -7,6 +7,7 @@ A telegram bot to download the reddit posts.
 * Download videos on `v.redd.it` and merge the audio with them using [FFmpeg](https://www.ffmpeg.org/)
 * Download galleries
 * Choose the quality of photos or videos (except galleries, always the best resolution is used in them)
+* Download comments
 ## What this bot can't do?
 * Send deleted posts
 * Send polls

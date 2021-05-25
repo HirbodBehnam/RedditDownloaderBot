@@ -27,10 +27,12 @@ import (
 // The cache to contain the requests of each user. Will reset in 10 minutes
 var UserMedia *cache.Cache
 var bot *tgbotapi.BotAPI
+var GlobalHttpClient = &http.Client{Timeout: time.Second * 10}
 
-const VERSION = "1.5.2"
-const UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.90 Safari/537.36"
-const ApiPoint = "https://api.reddit.com/api/info/?id=t3_%s"
+const Version = "1.6.0"
+const UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36"
+const PostApiPoint = "https://api.reddit.com/api/info/?id=t3_%s"
+const CommentApiPoint = "https://api.reddit.com/api/info/?id=t1_%s"
 const RegularMaxUploadSize = 50 * 1000 * 1000 // these must be 1000 not 1024
 const PhotoMaxUploadSize = 10 * 1000 * 1000
 
@@ -57,7 +59,7 @@ func main() {
 	if err != nil {
 		log.Fatal("Cannot initialize the bot:", err.Error())
 	}
-	log.Println("Reddit Downloader Bot v" + VERSION)
+	log.Println("Reddit Downloader Bot v" + Version)
 	if !CheckFfmpegExists() {
 		log.Println("WARNING: ffmpeg is not installed on your system")
 	}
@@ -87,9 +89,9 @@ func main() {
 			case "start":
 				_, _ = bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Hello and welcome!\nJust send me the link of the post to download it for you."))
 			case "about":
-				_, _ = bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Reddit Downloader Bot v"+VERSION+"\nBy Hirbod Behnam\nSource: https://github.com/HirbodBehnam/RedditDownloaderBot"))
+				_, _ = bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Reddit Downloader Bot v"+Version+"\nBy Hirbod Behnam\nSource: https://github.com/HirbodBehnam/RedditDownloaderBot"))
 			case "help":
-				_, _ = bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Just send me the link of the reddit post. If it's text, I will send the text of the post. If it's a photo or video, I will send the it with the title as caption."))
+				_, _ = bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Just send me the link of the reddit post or comment. If it's text, I will send the text of the post. If it's a photo or video, I will send the it with the title as caption."))
 			default:
 				_, _ = bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Sorry this command is not recognized; Try /help"))
 			}
@@ -572,13 +574,28 @@ func HandleVideoFinal(vidUrl, title, thumbnailUrl string, id int64) {
 	_, _ = bot.Send(tgbotapi.NewDeleteMessage(id, infoMessage.MessageID))
 }
 
+// Downloads and sends a command to user
+func HandleComment(token string, id int64, msgId int) {
+	root, err := DownloadJson(fmt.Sprintf(CommentApiPoint, token))
+	if err != nil {
+		_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot download page: "+err.Error()))
+		return
+	}
+	text := root["data"].(map[string]interface{})["children"].([]interface{})[0].(map[string]interface{})["data"].(map[string]interface{})["body"].(string)
+	msg := tgbotapi.NewMessage(id, text)
+	msg.ReplyToMessageID = msgId
+	msg.Text = strings.ReplaceAll(msg.Text, "&#x200B;", "")
+	msg.ParseMode = "markdown"
+	_, _ = bot.Send(msg)
+}
+
 // This method starts when the user sends a link
 func StartFetch(postUrl string, id int64, msgId int) {
 	// dont crash the whole application
 	defer func() {
 		if r := recover(); r != nil {
 			log.Printf("Recovering from panic in StartFetch error is: %v, The url was: %v\n", r, postUrl)
-			_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot get data. (panic)"))
+			_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot get data. (panic)\nMaybe deleted post or invalid url?"))
 		}
 	}()
 	var postId string
@@ -604,22 +621,18 @@ func StartFetch(postUrl string, id int64, msgId int) {
 			_, _ = bot.Send(tgbotapi.NewMessage(id, "This url looks too small"))
 			return
 		}
+		if len(split) >= 7 && split[6] != "" {
+			HandleComment(split[6], id, msgId)
+			return
+		}
 		postId = split[4]
 	}
 	// now download the json
-	rawJson, err := DownloadString(fmt.Sprintf(ApiPoint, postId))
+	root, err := DownloadJson(fmt.Sprintf(PostApiPoint, postId))
 	if err != nil {
 		_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot download page: "+err.Error()))
 		return
 	}
-	// parse the json
-	var root map[string]interface{}
-	err = json.Unmarshal(rawJson, &root)
-	if err != nil {
-		_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot parse the page as json:"+err.Error()))
-		return
-	}
-	rawJson = nil // gc stuff
 	// get post type
 	// to do so, I check data->children[0]->data->post_hint
 	{
@@ -725,7 +738,7 @@ func StartFetch(postUrl string, id int64, msgId int) {
 						break
 					}
 					// get the meta tag og:video
-					doc, err := goquery.NewDocumentFromReader(strings.NewReader(string(source)))
+					doc, err := goquery.NewDocumentFromReader(bytes.NewReader(source))
 					if err != nil {
 						msg.Text = "Cannot parse the source code of " + root["url"].(string)
 						break
@@ -857,14 +870,7 @@ func ExtractLinkAndRes(data interface{}) (string, string, string) {
 // Downloads a URL's data as string
 // The user agent must change
 func DownloadString(Url string) ([]byte, error) {
-	client := http.Client{}
-	req, err := http.NewRequest("GET", Url, nil)
-	if err != nil {
-		return nil, err
-	}
-	// mimic chrome
-	req.Header.Set("User-Agent", UserAgent)
-	resp, err := client.Do(req)
+	resp, err := DoGetRequest(Url)
 	if err != nil {
 		return nil, err
 	}
@@ -872,19 +878,24 @@ func DownloadString(Url string) ([]byte, error) {
 	if resp.StatusCode == http.StatusForbidden {
 		return nil, errors.New("forbidden")
 	}
-	return ioutil.ReadAll(resp.Body)
+	return io.ReadAll(resp.Body)
+}
+
+// Downloads a webpage and parses it into a json map
+func DownloadJson(Url string) (map[string]interface{}, error) {
+	resp, err := DoGetRequest(Url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	var result map[string]interface{}
+	err = json.NewDecoder(resp.Body).Decode(&result)
+	return result, err
 }
 
 // Downloads a web page to file
 func DownloadFile(Url string, file *os.File) error {
-	client := http.Client{}
-	req, err := http.NewRequest("GET", Url, nil)
-	if err != nil {
-		return err
-	}
-	// mimic chrome
-	req.Header.Set("User-Agent", UserAgent)
-	resp, err := client.Do(req)
+	resp, err := DoGetRequest(Url)
 	if err != nil {
 		return err
 	}
@@ -894,6 +905,18 @@ func DownloadFile(Url string, file *os.File) error {
 	}
 	_, err = io.Copy(file, resp.Body)
 	return err
+}
+
+// Makes a simple GET request and executes it
+// Close the body of the request after you are done with it
+func DoGetRequest(Url string) (*http.Response, error) {
+	req, err := http.NewRequest("GET", Url, nil)
+	if err != nil {
+		return nil, err
+	}
+	// mimic chrome
+	req.Header.Set("User-Agent", UserAgent)
+	return GlobalHttpClient.Do(req)
 }
 
 // Returns true if ffmpeg is found

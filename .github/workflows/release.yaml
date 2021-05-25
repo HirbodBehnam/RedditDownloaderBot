@@ -16,7 +16,7 @@ jobs:
         goos: linux
         goarch: "386"
         md5sum: FALSE
-        goversion: "https://dl.google.com/go/go1.15.8.linux-amd64.tar.gz"
+        goversion: "https://golang.org/dl/go1.16.4.linux-amd64.tar.gz"
 
   release-linux-amd64:
     name: release linux/amd64
@@ -29,7 +29,7 @@ jobs:
         goos: linux
         goarch: amd64
         md5sum: FALSE
-        goversion: "https://dl.google.com/go/go1.15.8.linux-amd64.tar.gz"
+        goversion: "https://golang.org/dl/go1.16.4.linux-amd64.tar.gz"
         
   release-linux-arm:
     name: release linux/arm
@@ -42,7 +42,7 @@ jobs:
         goos: linux
         goarch: arm
         md5sum: FALSE
-        goversion: "https://dl.google.com/go/go1.15.8.linux-amd64.tar.gz"
+        goversion: "https://golang.org/dl/go1.16.4.linux-amd64.tar.gz"
         
   release-linux-arm64:
     name: release linux/arm64
@@ -55,7 +55,7 @@ jobs:
         goos: linux
         goarch: arm64
         md5sum: FALSE
-        goversion: "https://dl.google.com/go/go1.15.8.linux-amd64.tar.gz"
+        goversion: "https://golang.org/dl/go1.16.4.linux-amd64.tar.gz"
         
   release-darwin-amd64:
     name: release darwin/amd64
@@ -68,7 +68,7 @@ jobs:
         goos: darwin
         goarch: amd64
         md5sum: FALSE
-        goversion: "https://dl.google.com/go/go1.15.8.linux-amd64.tar.gz"
+        goversion: "https://golang.org/dl/go1.16.4.linux-amd64.tar.gz"
         
   release-windows-386:
     name: release windows/386
@@ -81,7 +81,7 @@ jobs:
         goos: windows
         goarch: "386"
         md5sum: FALSE
-        goversion: "https://dl.google.com/go/go1.15.8.linux-amd64.tar.gz"
+        goversion: "https://golang.org/dl/go1.16.4.linux-amd64.tar.gz"
         
   release-windows-amd64:
     name: release windows/amd64
@@ -94,5 +94,5 @@ jobs:
         goos: windows
         goarch: amd64
         md5sum: FALSE
-        goversion: "https://dl.google.com/go/go1.15.8.linux-amd64.tar.gz"
+        goversion: "https://golang.org/dl/go1.16.4.linux-amd64.tar.gz"
         

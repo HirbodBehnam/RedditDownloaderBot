@@ -1,98 +1,31 @@
-# .github/workflows/release.yaml
+name: Release
 
-on: 
+on:
   release:
-    types: [created]
+    types: [ created ]
 
 jobs:
-  release-linux-386:
-    name: release linux/386
+  releases-matrix:
+    name: Release Go Binary
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [ linux, windows, darwin ]
+        goarch: [ "386", amd64 ]
+        exclude:
+          - goarch: "386"
+            goos: darwin
+        include:
+          - goarch: "arm"
+            goos: linux
+          - goarch: "arm64"
+            goos: linux
     steps:
-    - uses: actions/checkout@v2
-    - uses: wangyoucao577/go-release-action@v1.14
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        goos: linux
-        goarch: "386"
-        md5sum: FALSE
-        goversion: "https://golang.org/dl/go1.16.4.linux-amd64.tar.gz"
-
-  release-linux-amd64:
-    name: release linux/amd64
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - uses: wangyoucao577/go-release-action@v1.14
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        goos: linux
-        goarch: amd64
-        md5sum: FALSE
-        goversion: "https://golang.org/dl/go1.16.4.linux-amd64.tar.gz"
-        
-  release-linux-arm:
-    name: release linux/arm
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - uses: wangyoucao577/go-release-action@v1.14
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        goos: linux
-        goarch: arm
-        md5sum: FALSE
-        goversion: "https://golang.org/dl/go1.16.4.linux-amd64.tar.gz"
-        
-  release-linux-arm64:
-    name: release linux/arm64
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - uses: wangyoucao577/go-release-action@v1.14
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        goos: linux
-        goarch: arm64
-        md5sum: FALSE
-        goversion: "https://golang.org/dl/go1.16.4.linux-amd64.tar.gz"
-        
-  release-darwin-amd64:
-    name: release darwin/amd64
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - uses: wangyoucao577/go-release-action@v1.14
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        goos: darwin
-        goarch: amd64
-        md5sum: FALSE
-        goversion: "https://golang.org/dl/go1.16.4.linux-amd64.tar.gz"
-        
-  release-windows-386:
-    name: release windows/386
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - uses: wangyoucao577/go-release-action@v1.14
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        goos: windows
-        goarch: "386"
-        md5sum: FALSE
-        goversion: "https://golang.org/dl/go1.16.4.linux-amd64.tar.gz"
-        
-  release-windows-amd64:
-    name: release windows/amd64
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - uses: wangyoucao577/go-release-action@v1.14
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        goos: windows
-        goarch: amd64
-        md5sum: FALSE
-        goversion: "https://golang.org/dl/go1.16.4.linux-amd64.tar.gz"
-        
+      - uses: actions/checkout@v2
+      - uses: wangyoucao577/go-release-action@v1.18
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          goos: ${{ matrix.goos }}
+          goarch: ${{ matrix.goarch }}
+          goversion: "https://golang.org/dl/go1.16.5.linux-amd64.tar.gz"
+          md5sum: FALSE

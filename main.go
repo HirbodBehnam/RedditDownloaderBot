@@ -29,7 +29,7 @@ var UserMedia *cache.Cache
 var bot *tgbotapi.BotAPI
 var GlobalHttpClient = &http.Client{Timeout: time.Second * 10}
 
-const Version = "1.6.0"
+const Version = "1.6.1"
 const UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36"
 const PostApiPoint = "https://api.reddit.com/api/info/?id=t3_%s"
 const CommentApiPoint = "https://api.reddit.com/api/info/?id=t1_%s"
@@ -584,7 +584,7 @@ func HandleComment(token string, id int64, msgId int) {
 	text := root["data"].(map[string]interface{})["children"].([]interface{})[0].(map[string]interface{})["data"].(map[string]interface{})["body"].(string)
 	msg := tgbotapi.NewMessage(id, text)
 	msg.ReplyToMessageID = msgId
-	msg.Text = strings.ReplaceAll(msg.Text, "&#x200B;", "")
+	msg.Text = html.UnescapeString(msg.Text)
 	msg.ParseMode = "markdown"
 	_, _ = bot.Send(msg)
 }

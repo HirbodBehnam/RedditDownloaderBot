@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -27,10 +28,17 @@ import (
 // The cache to contain the requests of each user. Will reset in 10 minutes
 var UserMedia *cache.Cache
 var bot *tgbotapi.BotAPI
-var GlobalHttpClient = &http.Client{Timeout: time.Second * 10}
+var GlobalHttpClient = &http.Client{
+	Transport: &http.Transport{
+		TLSClientConfig: &tls.Config{
+			CipherSuites: []uint16{tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+		},
+	},
+	Timeout: time.Second * 10,
+}
 
-const Version = "1.6.1"
-const UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36"
+const Version = "1.6.2"
+const UserAgent = "TelegramBot:Reddit-Downloader-Bot:" + Version + " (by /u/HirbodBehnam)"
 const PostApiPoint = "https://api.reddit.com/api/info/?id=t3_%s"
 const CommentApiPoint = "https://api.reddit.com/api/info/?id=t1_%s"
 const RegularMaxUploadSize = 50 * 1000 * 1000 // these must be 1000 not 1024

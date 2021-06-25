@@ -2,10 +2,9 @@ package main
 
 import (
 	"bytes"
-	"crypto/tls"
-	"encoding/json"
 	"errors"
-	"fmt"
+	"github.com/HirbodBehnam/RedditDownloaderBot/config"
+	"github.com/HirbodBehnam/RedditDownloaderBot/oauth"
 	"github.com/PuerkitoBio/goquery"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	guuid "github.com/google/uuid"
@@ -28,19 +27,8 @@ import (
 // The cache to contain the requests of each user. Will reset in 10 minutes
 var UserMedia *cache.Cache
 var bot *tgbotapi.BotAPI
-var GlobalHttpClient = &http.Client{
-	Transport: &http.Transport{
-		TLSClientConfig: &tls.Config{
-			CipherSuites: []uint16{tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
-		},
-	},
-	Timeout: time.Second * 10,
-}
+var reddit *oauth.RedditOauth
 
-const Version = "1.6.2"
-const UserAgent = "TelegramBot:Reddit-Downloader-Bot:" + Version + " (by /u/HirbodBehnam)"
-const PostApiPoint = "https://api.reddit.com/api/info/?id=t3_%s"
-const CommentApiPoint = "https://api.reddit.com/api/info/?id=t1_%s"
 const RegularMaxUploadSize = 50 * 1000 * 1000 // these must be 1000 not 1024
 const PhotoMaxUploadSize = 10 * 1000 * 1000
 
@@ -49,7 +37,7 @@ const NoThumbnailNeededSize = 10 * 1000 * 1000
 
 // The quality for videos
 // I haven't found anything higher than 1080p
-var QUALITY = []string{"1080", "720", "480", "360", "240", "96"}
+var QUALITY = [...]string{"1080", "720", "480", "360", "240", "96"}
 
 const (
 	MediaTypePicture = "0"
@@ -59,15 +47,20 @@ const (
 
 func main() {
 	var err error
-	if len(os.Args) < 2 {
-		log.Fatal("Please pass the bot token as argument.")
+	if len(os.Args) < 4 {
+		log.Fatal("Please pass the bot token, reddit client app and reddit client secret as arguments.")
 	}
-	// load bot
+	// Load reddit
+	reddit, err = oauth.NewRedditOauth(os.Args[2], os.Args[3])
+	if err != nil {
+		log.Fatal("Cannot initialize the reddit oauth:", err.Error())
+	}
+	// Load bot
 	bot, err = tgbotapi.NewBotAPI(os.Args[1])
 	if err != nil {
 		log.Fatal("Cannot initialize the bot:", err.Error())
 	}
-	log.Println("Reddit Downloader Bot v" + Version)
+	log.Println("Reddit Downloader Bot v" + config.Version)
 	if !CheckFfmpegExists() {
 		log.Println("WARNING: ffmpeg is not installed on your system")
 	}
@@ -97,7 +90,7 @@ func main() {
 			case "start":
 				_, _ = bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Hello and welcome!\nJust send me the link of the post to download it for you."))
 			case "about":
-				_, _ = bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Reddit Downloader Bot v"+Version+"\nBy Hirbod Behnam\nSource: https://github.com/HirbodBehnam/RedditDownloaderBot"))
+				_, _ = bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Reddit Downloader Bot v"+config.Version+"\nBy Hirbod Behnam\nSource: https://github.com/HirbodBehnam/RedditDownloaderBot"))
 			case "help":
 				_, _ = bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Just send me the link of the reddit post or comment. If it's text, I will send the text of the post. If it's a photo or video, I will send the it with the title as caption."))
 			default:
@@ -584,7 +577,7 @@ func HandleVideoFinal(vidUrl, title, thumbnailUrl string, id int64) {
 
 // Downloads and sends a command to user
 func HandleComment(token string, id int64, msgId int) {
-	root, err := DownloadJson(fmt.Sprintf(CommentApiPoint, token))
+	root, err := reddit.GetComment(token)
 	if err != nil {
 		_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot download page: "+err.Error()))
 		return
@@ -636,7 +629,7 @@ func StartFetch(postUrl string, id int64, msgId int) {
 		postId = split[4]
 	}
 	// now download the json
-	root, err := DownloadJson(fmt.Sprintf(PostApiPoint, postId))
+	root, err := reddit.GetPost(postId)
 	if err != nil {
 		_, _ = bot.Send(tgbotapi.NewMessage(id, "Cannot download page: "+err.Error()))
 		return
@@ -878,7 +871,7 @@ func ExtractLinkAndRes(data interface{}) (string, string, string) {
 // Downloads a URL's data as string
 // The user agent must change
 func DownloadString(Url string) ([]byte, error) {
-	resp, err := DoGetRequest(Url)
+	resp, err := config.GlobalHttpClient.Get(Url)
 	if err != nil {
 		return nil, err
 	}
@@ -889,21 +882,9 @@ func DownloadString(Url string) ([]byte, error) {
 	return io.ReadAll(resp.Body)
 }
 
-// Downloads a webpage and parses it into a json map
-func DownloadJson(Url string) (map[string]interface{}, error) {
-	resp, err := DoGetRequest(Url)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	var result map[string]interface{}
-	err = json.NewDecoder(resp.Body).Decode(&result)
-	return result, err
-}
-
 // Downloads a web page to file
 func DownloadFile(Url string, file *os.File) error {
-	resp, err := DoGetRequest(Url)
+	resp, err := config.GlobalHttpClient.Get(Url)
 	if err != nil {
 		return err
 	}
@@ -913,18 +894,6 @@ func DownloadFile(Url string, file *os.File) error {
 	}
 	_, err = io.Copy(file, resp.Body)
 	return err
-}
-
-// Makes a simple GET request and executes it
-// Close the body of the request after you are done with it
-func DoGetRequest(Url string) (*http.Response, error) {
-	req, err := http.NewRequest("GET", Url, nil)
-	if err != nil {
-		return nil, err
-	}
-	// mimic chrome
-	req.Header.Set("User-Agent", UserAgent)
-	return GlobalHttpClient.Do(req)
 }
 
 // Returns true if ffmpeg is found

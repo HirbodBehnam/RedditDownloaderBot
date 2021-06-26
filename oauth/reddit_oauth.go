@@ -7,6 +7,7 @@ import (
 	"github.com/HirbodBehnam/RedditDownloaderBot/config"
 	"log"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -23,7 +24,6 @@ const PostApiPoint = "https://api.reddit.com/api/info/?id=t3_%s"
 const CommentApiPoint = "https://api.reddit.com/api/info/?id=t1_%s"
 
 const encodedGrantType = "grant_type=client_credentials&duration=permanent"
-const encodedRefreshTokenBody = "grant_type=refresh_token&refresh_token="
 
 var RateLimitError = errors.New("rate limit reached")
 
@@ -102,13 +102,17 @@ func (r *RedditOauth) createToken() (error, time.Duration) {
 	}
 	// Set the data
 	r.authorizationHeader = "bearer: " + body.AccessToken
+	r.refreshToken = body.RefreshToken
 	return nil, time.Duration(body.ExpiresIn) * time.Second
 }
 
 // refreshTokenFunction refreshes the token from reddit servers
 func (r *RedditOauth) refreshTokenFunction() (error, time.Duration) {
 	// Build the request
-	req, _ := http.NewRequest("POST", "https://www.reddit.com/api/v1/access_token", strings.NewReader(encodedRefreshTokenBody+r.refreshToken))
+	form := url.Values{}
+	form.Set("grant_type", "refresh_token")
+	form.Set("refresh_token", r.refreshToken)
+	req, _ := http.NewRequest("POST", "https://www.reddit.com/api/v1/access_token", strings.NewReader(form.Encode()))
 	req.Header.Set("User-Agent", UserAgent)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.SetBasicAuth(r.clientId, r.clientSecret)

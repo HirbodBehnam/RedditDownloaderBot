@@ -19,6 +19,7 @@ A telegram bot to download the reddit posts.
 2. gfycat (Note that some of them may not work because they are not hosted on reddit. Also, they are soundless)
 3. streamable
 ## Setup
+### Build
 To start, please at first install [FFmpeg](https://www.ffmpeg.org/) in your path. On Ubuntu, `apt install ffmpeg` is enough.
 
 Then download and build this project:
@@ -28,6 +29,12 @@ cd RedditDownloaderBot
 go build
 ```
 
-For running, pass the bot token as the first argument: `./bot 1234567:4TT8bAc8GHUspu3ERYn-KGcvsvGB9u_n4ddy`
+### Reddit Token
+To use this bot, you need to have a registered Reddit application. To do so, you can use [this](https://github.com/reddit-archive/reddit/wiki/OAuth2#getting-started) guide by Reddit itself.
+Choose `Script app` as application type. Doing so, will give you two tokens: A client id and a client secret. (The client id is the `one personal use script` text on top left)
+
+### Running
+For running, pass the bot token as the first argument, client id as the second argument and the client secret as the third argument: `./bot 1234567:4TT8bAc8GHUspu3ERYn-KGcvsvGB9u_n4ddy p-jcoLKBynTLew gko_LXELoV07ZBNUXrvWZfzE3aI`
+
 ### Live bot
 Here is a live bot that I host it: [@reddit_download_bot](http://t.me/reddit_download_bot)

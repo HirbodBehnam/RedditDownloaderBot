@@ -3,7 +3,6 @@ package oauth
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/HirbodBehnam/RedditDownloaderBot/config"
 	"log"
 	"net/http"
@@ -18,10 +17,10 @@ import (
 const UserAgent = "TelegramBot:Reddit-Downloader-Bot:" + config.Version + " (by /u/HirbodBehnam)"
 
 // PostApiPoint is the endpoint format which we should get info about posts
-const PostApiPoint = "https://api.reddit.com/api/info/?id=t3_%s"
+const PostApiPoint = "https://api.reddit.com/api/info/?id=t3_"
 
 // CommentApiPoint is the endpoint format which we should get info about comments
-const CommentApiPoint = "https://api.reddit.com/api/info/?id=t1_%s"
+const CommentApiPoint = "https://api.reddit.com/api/info/?id=t1_"
 
 const encodedGrantType = "grant_type=client_credentials&duration=permanent"
 
@@ -136,12 +135,12 @@ func (r *RedditOauth) refreshTokenFunction() (error, time.Duration) {
 
 // GetComment gets the info about a comment from reddit
 func (r *RedditOauth) GetComment(id string) (map[string]interface{}, error) {
-	return r.doGetJsonRequest(fmt.Sprintf(CommentApiPoint, id))
+	return r.doGetJsonRequest(CommentApiPoint + id)
 }
 
 // GetPost gets the info about a post from reddit
 func (r *RedditOauth) GetPost(id string) (map[string]interface{}, error) {
-	return r.doGetJsonRequest(fmt.Sprintf(PostApiPoint, id))
+	return r.doGetJsonRequest(PostApiPoint + id)
 }
 
 func (r *RedditOauth) doGetJsonRequest(Url string) (map[string]interface{}, error) {

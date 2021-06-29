@@ -587,7 +587,11 @@ func HandleComment(token string, id int64, msgId int) {
 	msg.ReplyToMessageID = msgId
 	msg.Text = html.UnescapeString(msg.Text)
 	msg.ParseMode = "markdown"
-	_, _ = bot.Send(msg)
+	_, err = bot.Send(msg)
+	if err != nil { // probably the markdown failed because of complex markdown
+		msg.ParseMode = ""
+		_, _ = bot.Send(msg)
+	}
 }
 
 // This method starts when the user sends a link

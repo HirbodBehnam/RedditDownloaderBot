@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"github.com/HirbodBehnam/RedditDownloaderBot/config"
 	"github.com/HirbodBehnam/RedditDownloaderBot/oauth"
 	"github.com/PuerkitoBio/goquery"
@@ -19,6 +20,7 @@ import (
 	"os/exec"
 	"path"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -583,6 +585,14 @@ func HandleComment(token string, id int64, msgId int) {
 		return
 	}
 	text := root["data"].(map[string]interface{})["children"].([]interface{})[0].(map[string]interface{})["data"].(map[string]interface{})["body"].(string)
+	// Check gif comments
+	regex, _ := regexp.Compile("!\\[gif]\\(giphy\\|(\\w+)\\)")
+	if matches := regex.FindStringSubmatch(text); len(matches) == 2 {
+		HandleGifFinal(fmt.Sprintf("https://i.giphy.com/media/%s/giphy.gif", matches[1]),
+			"", "", id)
+		return
+	}
+	// Otherwise, this is a normal comment
 	msg := tgbotapi.NewMessage(id, text)
 	msg.ReplyToMessageID = msgId
 	msg.Text = html.UnescapeString(msg.Text)

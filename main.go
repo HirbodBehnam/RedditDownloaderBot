@@ -41,6 +41,9 @@ const NoThumbnailNeededSize = 10 * 1000 * 1000
 // I haven't found anything higher than 1080p
 var QUALITY = [...]string{"1080", "720", "480", "360", "240", "96"}
 
+// GiphyCommentRegex is a regex to extract gifs in comments
+var GiphyCommentRegex = regexp.MustCompile("!\\[gif]\\(giphy\\|(\\w+)\\)")
+
 const (
 	MediaTypePicture = "0"
 	MediaTypeVideo   = "1"
@@ -586,8 +589,7 @@ func HandleComment(token string, id int64, msgId int) {
 	}
 	text := root["data"].(map[string]interface{})["children"].([]interface{})[0].(map[string]interface{})["data"].(map[string]interface{})["body"].(string)
 	// Check gif comments
-	regex, _ := regexp.Compile("!\\[gif]\\(giphy\\|(\\w+)\\)")
-	if matches := regex.FindStringSubmatch(text); len(matches) == 2 {
+	if matches := GiphyCommentRegex.FindStringSubmatch(text); len(matches) == 2 {
 		HandleGifFinal(fmt.Sprintf("https://i.giphy.com/media/%s/giphy.gif", matches[1]),
 			"", "", id)
 		return

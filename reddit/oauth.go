@@ -1,4 +1,4 @@
-package oauth
+package reddit
 
 import (
 	"encoding/json"
@@ -26,8 +26,8 @@ const encodedGrantType = "grant_type=client_credentials&duration=permanent"
 
 var RateLimitError = errors.New("rate limit reached")
 
-// RedditOauth is an struct which can talk to reddit endpoints
-type RedditOauth struct {
+// RedditOauth is a struct which can talk to reddit endpoints
+type Oauth struct {
 	// When we should make the next request
 	rateLimit time.Time
 	// The client id of this app
@@ -50,8 +50,8 @@ type tokenRequestResponse struct {
 }
 
 // NewRedditOauth returns a new RedditOauth to be used to get posts from reddit
-func NewRedditOauth(clientId, clientSecret string) (*RedditOauth, error) {
-	redditOauth := &RedditOauth{
+func NewRedditOauth(clientId, clientSecret string) (*Oauth, error) {
+	redditOauth := &Oauth{
 		clientId:     clientId,
 		clientSecret: clientSecret,
 	}
@@ -64,10 +64,10 @@ func NewRedditOauth(clientId, clientSecret string) (*RedditOauth, error) {
 }
 
 // tokenRefresh refreshes the
-func (r *RedditOauth) tokenRefresh(nextRefresh time.Duration) {
+func (o *Oauth) tokenRefresh(nextRefresh time.Duration) {
 	for {
 		time.Sleep(nextRefresh - time.Minute)
-		err, nextRefreshCandidate := r.refreshTokenFunction()
+		err, nextRefreshCandidate := o.refreshTokenFunction()
 		if err != nil {
 			log.Printf("cannot refresh token: %s", err.Error())
 			nextRefresh = time.Minute
@@ -78,12 +78,12 @@ func (r *RedditOauth) tokenRefresh(nextRefresh time.Duration) {
 }
 
 // createToken creates an RedditOauth.authorizationHeader and returns when will the next token expire
-func (r *RedditOauth) createToken() (error, time.Duration) {
+func (o *Oauth) createToken() (error, time.Duration) {
 	// Build the request
 	req, _ := http.NewRequest("POST", "https://www.reddit.com/api/v1/access_token", strings.NewReader(encodedGrantType))
 	req.Header.Set("User-Agent", UserAgent)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.SetBasicAuth(r.clientId, r.clientSecret)
+	req.SetBasicAuth(o.clientId, o.clientSecret)
 	// Send the request
 	resp, err := config.GlobalHttpClient.Do(req)
 	if err != nil {
@@ -100,21 +100,21 @@ func (r *RedditOauth) createToken() (error, time.Duration) {
 		return errors.New("status code is not 200. It is " + resp.Status), 0
 	}
 	// Set the data
-	r.authorizationHeader = "bearer: " + body.AccessToken
-	r.refreshToken = body.RefreshToken
+	o.authorizationHeader = "bearer: " + body.AccessToken
+	o.refreshToken = body.RefreshToken
 	return nil, time.Duration(body.ExpiresIn) * time.Second
 }
 
 // refreshTokenFunction refreshes the token from reddit servers
-func (r *RedditOauth) refreshTokenFunction() (error, time.Duration) {
+func (o *Oauth) refreshTokenFunction() (error, time.Duration) {
 	// Build the request
 	form := url.Values{}
 	form.Set("grant_type", "refresh_token")
-	form.Set("refresh_token", r.refreshToken)
+	form.Set("refresh_token", o.refreshToken)
 	req, _ := http.NewRequest("POST", "https://www.reddit.com/api/v1/access_token", strings.NewReader(form.Encode()))
 	req.Header.Set("User-Agent", UserAgent)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.SetBasicAuth(r.clientId, r.clientSecret)
+	req.SetBasicAuth(o.clientId, o.clientSecret)
 	// Send the request
 	resp, err := config.GlobalHttpClient.Do(req)
 	if err != nil {
@@ -134,30 +134,30 @@ func (r *RedditOauth) refreshTokenFunction() (error, time.Duration) {
 }
 
 // GetComment gets the info about a comment from reddit
-func (r *RedditOauth) GetComment(id string) (map[string]interface{}, error) {
-	return r.doGetJsonRequest(CommentApiPoint + id)
+func (o *Oauth) GetComment(id string) (map[string]interface{}, error) {
+	return o.doGetJsonRequest(CommentApiPoint + id)
 }
 
 // GetPost gets the info about a post from reddit
-func (r *RedditOauth) GetPost(id string) (map[string]interface{}, error) {
-	return r.doGetJsonRequest(PostApiPoint + id)
+func (o *Oauth) GetPost(id string) (map[string]interface{}, error) {
+	return o.doGetJsonRequest(PostApiPoint + id)
 }
 
-func (r *RedditOauth) doGetJsonRequest(Url string) (map[string]interface{}, error) {
+func (o *Oauth) doGetJsonRequest(Url string) (map[string]interface{}, error) {
 	// Check rate limit
-	r.rateLimitMutex.RLock()
-	if time.Now().Before(r.rateLimit) {
-		r.rateLimitMutex.RUnlock()
+	o.rateLimitMutex.RLock()
+	if time.Now().Before(o.rateLimit) {
+		o.rateLimitMutex.RUnlock()
 		return nil, RateLimitError
 	}
-	r.rateLimitMutex.RUnlock()
+	o.rateLimitMutex.RUnlock()
 	// Build the request
 	req, err := http.NewRequest("GET", Url, nil)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("User-Agent", UserAgent)
-	req.Header.Set("Authorization", r.authorizationHeader)
+	req.Header.Set("Authorization", o.authorizationHeader)
 	// Do the request
 	resp, err := config.GlobalHttpClient.Do(req)
 	if err != nil {
@@ -166,13 +166,13 @@ func (r *RedditOauth) doGetJsonRequest(Url string) (map[string]interface{}, erro
 	// Check the rate limit
 	if rateLimit, err := strconv.Atoi(resp.Header.Get("X-Ratelimit-Remaining")); err == nil && rateLimit == 0 {
 		freedom, _ := strconv.Atoi(resp.Header.Get("X-Ratelimit-Reset"))
-		r.rateLimitMutex.Lock()
-		r.rateLimit = time.Now().Add(time.Duration(freedom) * time.Second)
-		r.rateLimitMutex.Unlock()
+		o.rateLimitMutex.Lock()
+		o.rateLimit = time.Now().Add(time.Duration(freedom) * time.Second)
+		o.rateLimitMutex.Unlock()
 	}
 	// Read the body
 	var responseBody map[string]interface{}
 	err = json.NewDecoder(resp.Body).Decode(&responseBody)
 	_ = resp.Body.Close()
-	return responseBody, nil
+	return responseBody, err
 }

@@ -36,67 +36,32 @@ func (o *Oauth) StartFetch(postUrl string) (fetchResult interface{}, fetchError 
 			}
 		}
 	}()
-	var postId string
-	// Get the id
-	{
-		var u *url.URL = nil
-		// Check all lines for links. In new reddit update, sharing via Telegram adds the post title at its first
-		lines := strings.Split(postUrl, "\n")
-		for _, line := range lines {
-			u, _ = url.Parse(line)
-			if u != nil {
-				if u.Host == "v.redd.it" {
-					followedUrl, err := util.FollowRedirect(line)
-					if err != nil {
-						continue
-					}
-					u, _ = url.Parse(followedUrl)
-				}
-				if u.Host == "www.reddit.com" || u.Host == "reddit.com" || u.Host == "old.reddit.com" {
-					postUrl = line
-					break
-				}
+	// Get the post ID
+	postId, isComment, fetchError := getPostID(postUrl)
+	if fetchError != nil {
+		return
+	}
+	if isComment {
+		root, err := o.GetComment(postUrl)
+		if err != nil {
+			return nil, &FetchError{
+				NormalError: "cannot download comment: " + err.Error(),
+				BotError:    "Cannot download comment",
 			}
-			u = nil // this is for last loop. If u is nil after that final loop, it means that there is no reddit url in text
 		}
-		if u == nil {
-			fetchError = &FetchError{
-				NormalError: "invalid url: no url",
-				BotError:    "Cannot parse reddit the url. Does your text contain a reddit url?",
-			}
-			return
+		// Check gif comments
+		text := root["data"].(map[string]interface{})["children"].([]interface{})[0].(map[string]interface{})["data"].(map[string]interface{})["body"].(string)
+		if matches := giphyCommentRegex.FindStringSubmatch(text); len(matches) == 2 {
+			return FetchResultMedia{
+				Medias: []FetchResultMediaEntry{{
+					Link:    fmt.Sprintf("https://i.giphy.com/media/%s/giphy.gif", matches[1]),
+					Quality: "giphy",
+				}},
+				Type: FetchResultMediaTypeGif,
+			}, nil
 		}
-		split := strings.Split(u.Path, "/")
-		if len(split) < 5 {
-			fetchError = &FetchError{
-				NormalError: "invalid url: too small",
-				BotError:    "Cannot parse reddit the url. Does your text contain a reddit url?",
-			}
-			return
-		}
-		if len(split) >= 7 && split[6] != "" {
-			root, err := o.GetComment(split[6])
-			if err != nil {
-				return nil, &FetchError{
-					NormalError: "cannot download comment: " + err.Error(),
-					BotError:    "Cannot download comment",
-				}
-			}
-			// Check gif comments
-			text := root["data"].(map[string]interface{})["children"].([]interface{})[0].(map[string]interface{})["data"].(map[string]interface{})["body"].(string)
-			if matches := giphyCommentRegex.FindStringSubmatch(text); len(matches) == 2 {
-				return FetchResultMedia{
-					Medias: []FetchResultMediaEntry{{
-						Link:    fmt.Sprintf("https://i.giphy.com/media/%s/giphy.gif", matches[1]),
-						Quality: "giphy",
-					}},
-					Type: FetchResultMediaTypeGif,
-				}, nil
-			}
-			// Normal comment
-			return FetchResultComment{text}, nil
-		}
-		postId = split[4]
+		// Normal comment
+		return FetchResultComment{text}, nil
 	}
 	// Now download the json
 	root, err := o.GetPost(postId)
@@ -303,6 +268,61 @@ func (o *Oauth) StartFetch(postUrl string) (fetchResult interface{}, fetchError 
 			Text:  strings.ReplaceAll(html.UnescapeString(root["selftext"].(string)), "&#x200B;", ""),
 		}, nil
 	}
+}
+
+func getPostID(postUrl string) (postID string, isComment bool, err *FetchError) {
+	var u *url.URL = nil
+	// Check all lines for links. In new reddit update, sharing via Telegram adds the post title at its first
+	lines := strings.Split(postUrl, "\n")
+	for _, line := range lines {
+		u, _ = url.Parse(line)
+		if u != nil {
+			if u.Host == "redd.it" {
+				if len(u.Path) > 1 {
+					p := u.Path[1:]
+					if strings.Contains(p, "/") {
+						continue
+					}
+					return p, false, nil
+				}
+				continue
+			}
+			if u.Host == "v.redd.it" {
+				followedUrl, err := util.FollowRedirect(line)
+				if err != nil {
+					continue
+				}
+				u, _ = url.Parse(followedUrl)
+			}
+			if u.Host == "www.reddit.com" || u.Host == "reddit.com" || u.Host == "old.reddit.com" {
+				postUrl = line
+				break
+			}
+		}
+		u = nil // this is for last loop. If u is nil after that final loop, it means that there is no reddit url in text
+	}
+	if u == nil {
+		err = &FetchError{
+			NormalError: "invalid url: no url",
+			BotError:    "Cannot parse reddit the url. Does your text contain a reddit url?",
+		}
+		return
+	}
+	split := strings.Split(u.Path, "/")
+	if len(split) == 1 { // www.reddit.com/x
+		return split[0], false, nil
+	}
+	if len(split) < 5 {
+		err = &FetchError{
+			NormalError: "invalid url: too small",
+			BotError:    "Cannot parse reddit the url. Does your text contain a reddit url?",
+		}
+		return
+	}
+	if len(split) >= 7 && split[6] != "" {
+		return split[6], true, nil
+	}
+	return split[4], false, nil
 }
 
 // getGalleryData extracts the gallery data from gallery json

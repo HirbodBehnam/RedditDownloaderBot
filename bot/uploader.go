@@ -6,6 +6,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"log"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -62,10 +63,10 @@ func handleVideoUpload(vidUrl, title, thumbnailUrl string, chatID int64) {
 	stopReportChannel := statusReporter(chatID, "upload_video")
 	defer close(stopReportChannel)
 	// Download the gif
-	tmpFile, err := reddit.DownloadVideo(vidUrl)
+	audioUrl, tmpFile, err := reddit.DownloadVideo(vidUrl)
 	if err != nil {
 		log.Println("Cannot download file", vidUrl, ":", err)
-		_, _ = bot.Send(tgbotapi.NewMessage(chatID, "Cannot download file.\nHere is the link to file: "+vidUrl))
+		_, _ = bot.Send(tgbotapi.NewMessage(chatID, "Can't download file.\n"+generateVideoUrlsMessage(vidUrl, audioUrl)))
 		return
 	}
 	defer func() { // Cleanup
@@ -74,7 +75,7 @@ func handleVideoUpload(vidUrl, title, thumbnailUrl string, chatID int64) {
 	}()
 	// Check file size
 	if !util.CheckFileSize(tmpFile.Name(), RegularMaxUploadSize) {
-		_, _ = bot.Send(tgbotapi.NewMessage(chatID, "This file is too big to upload it on telegram!\nHere is the link to file: "+vidUrl))
+		_, _ = bot.Send(tgbotapi.NewMessage(chatID, "This file is too big to upload it on telegram!\n"+generateVideoUrlsMessage(vidUrl, audioUrl)))
 		return
 	}
 	// Check thumbnail
@@ -89,15 +90,15 @@ func handleVideoUpload(vidUrl, title, thumbnailUrl string, chatID int64) {
 		}
 	}
 	// Upload it
-	msg := tgbotapi.NewAnimation(chatID, tmpFile.Name())
+	msg := tgbotapi.NewVideo(chatID, tmpFile.Name())
 	msg.Caption = title
 	if tmpThumbnailFile != nil {
 		msg.Thumb = tmpThumbnailFile.Name()
 	}
 	_, err = bot.Send(msg)
 	if err != nil {
-		_, _ = bot.Send(tgbotapi.NewMessage(chatID, "Cannot upload file.\nHere is the link to file: "+vidUrl))
 		log.Println("Cannot upload file:", err)
+		_, _ = bot.Send(tgbotapi.NewMessage(chatID, "Cannot upload file.\n"+generateVideoUrlsMessage(vidUrl, audioUrl)))
 		return
 	}
 }
@@ -200,7 +201,7 @@ func handleAlbumUpload(album reddit.FetchResultAlbum, chatID int64) {
 				fileConfigs = append(fileConfigs, f)
 			}
 		case reddit.FetchResultMediaTypeVideo:
-			tmpFile, err = reddit.DownloadVideo(media.Link)
+			_, tmpFile, err = reddit.DownloadVideo(media.Link)
 			if err == nil {
 				f := tgbotapi.NewInputMediaVideo(tmpFile.Name())
 				f.Caption = media.Caption
@@ -257,4 +258,18 @@ func statusReporter(chatID int64, action string) chan struct{} {
 		}
 	}()
 	return doneChan
+}
+
+// generateVideoUrlsMessage generates a text message which it can be used to give the user
+// the requested video and audio URL
+func generateVideoUrlsMessage(videoUrl, audioUrl string) string {
+	var sb strings.Builder
+	sb.Grow(150)
+	sb.WriteString("Here is the link to video file: ")
+	sb.WriteString(videoUrl)
+	if audioUrl != "" {
+		sb.WriteString("\nHere is the link to audio file: ")
+		sb.WriteString(audioUrl)
+	}
+	return sb.String()
 }

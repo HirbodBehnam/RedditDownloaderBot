@@ -72,6 +72,22 @@ func fetchPostDetailsAndSend(text string, chatID int64, messageID int) {
 	case reddit.FetchResultComment:
 		msg.Text = data.Text
 	case reddit.FetchResultMedia:
+		if len(data.Medias) == 0 {
+			msg.Text = "No media found!"
+			break
+		}
+		// If there is one media quality, download it
+		// Also allow the user to choose between photo or document in image
+		if len(data.Medias) == 1 && data.Type != reddit.FetchResultMediaTypePhoto {
+			switch data.Type {
+			case reddit.FetchResultMediaTypeGif:
+				handleGifUpload(data.Medias[0].Link, data.ThumbnailLink, data.Title, chatID)
+			case reddit.FetchResultMediaTypeVideo:
+				handleVideoUpload(data.Medias[0].Link, data.ThumbnailLink, data.Title, chatID)
+			}
+			return
+		}
+		// Allow the user to select quality
 		msg.Text = "Please select the quality"
 		id, _ := uuid.NewUUID()
 		idString := util.UUIDToBase64(id)
@@ -95,7 +111,7 @@ func fetchPostDetailsAndSend(text string, chatID int64, messageID int) {
 		return
 	default:
 		log.Printf("unknown type: %T\n", result)
-		msg.Text = "unknown type"
+		msg.Text = "unknown type (report please)"
 	}
 	_, err := bot.Send(msg)
 	if err != nil {

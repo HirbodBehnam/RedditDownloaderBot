@@ -39,30 +39,26 @@ func DownloadPhoto(link string) (*os.File, error) {
 
 // DownloadVideo downloads a video from reddit
 // If necessary, it will merge the audio and video with ffmpeg
-func DownloadVideo(vidUrl string) (videoFile *os.File, err error) {
+func DownloadVideo(vidUrl string) (audioUrl string, videoFile *os.File, err error) {
 	// Download the video in a temp file
-	vidFile, err := ioutil.TempFile("", "*.mp4")
+	videoFile, err = ioutil.TempFile("", "*.mp4")
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 	defer func() {
 		// Only delete the video file if error is not nil
 		if err != nil {
-			_ = vidFile.Close()
-			_ = os.Remove(vidFile.Name())
+			_ = videoFile.Close()
+			_ = os.Remove(videoFile.Name())
 		}
 	}()
-	err = util.DownloadToFile(vidUrl, vidFile)
+	err = util.DownloadToFile(vidUrl, videoFile)
 	if err != nil {
 		return
 	}
-	// Check ffmpeg; If it doesn't exist, just return the video file
-	if !util.DoesFfmpegExists() {
-		return videoFile, nil
-	}
 	// Otherwise, search for an audio file
-	audioUrl := vidUrl[:strings.LastIndex(vidUrl, "/")] // base url
-	if strings.Contains(vidUrl, ".mp4") {               // new reddit api or sth idk
+	audioUrl = vidUrl[:strings.LastIndex(vidUrl, "/")] // base url
+	if strings.Contains(vidUrl, ".mp4") {              // new reddit api or sth idk
 		audioUrl += "/DASH_audio.mp4"
 	} else { // old format
 		audioUrl += "/audio"
@@ -77,6 +73,14 @@ func DownloadVideo(vidUrl string) (videoFile *os.File, err error) {
 		_ = os.Remove(audFile.Name())
 	}()
 	hasAudio := util.DownloadToFile(audioUrl, audFile) == nil
+	if !hasAudio {
+		audioUrl = ""
+	}
+	// Check ffmpeg; If it doesn't exist, just return the video file
+	if !util.DoesFfmpegExists() {
+		return audioUrl, videoFile, nil
+	}
+	// If this file has audio, convert it
 	if hasAudio {
 		var finalFile *os.File
 		// Convert
@@ -84,7 +88,7 @@ func DownloadVideo(vidUrl string) (videoFile *os.File, err error) {
 		if err != nil {
 			return
 		}
-		cmd := exec.Command("ffmpeg", "-i", vidFile.Name(), "-i", audFile.Name(), "-c", "copy", finalFile.Name(), "-y")
+		cmd := exec.Command("ffmpeg", "-i", videoFile.Name(), "-i", audFile.Name(), "-c", "copy", finalFile.Name(), "-y")
 		var stderr bytes.Buffer
 		cmd.Stderr = &stderr
 		err = cmd.Run()
@@ -93,17 +97,19 @@ func DownloadVideo(vidUrl string) (videoFile *os.File, err error) {
 			log.Println(stderr.String())
 			_ = finalFile.Close()
 			_ = os.Remove(finalFile.Name())
-			return
+			// We don't return error here
+			err = nil
+			return audioUrl, videoFile, nil
 		}
 		// If we have reached here, it means that the conversion was fine
 		// So we swap the final file with video file and delete the video file
-		_ = vidFile.Close()
-		_ = os.Remove(vidFile.Name())
-		vidFile = finalFile
+		_ = videoFile.Close()
+		_ = os.Remove(videoFile.Name())
+		videoFile = finalFile
 	}
 	// No we can return the video file
-	err = nil // just be safe
-	return vidFile, nil
+	err = nil // Just be safe
+	return audioUrl, videoFile, nil
 }
 
 // DownloadGif downloads a gif from reddit

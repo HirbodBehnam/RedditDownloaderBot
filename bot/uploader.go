@@ -148,14 +148,14 @@ func handlePhotoUpload(photoUrl, title, thumbnailUrl string, chatID int64, asPho
 	if asPhoto {
 		photo := tgbotapi.NewPhoto(chatID, tmpFile.Name())
 		photo.Caption = title
-		if thumbnailUrl != "" {
+		if tmpThumbnailFile != nil {
 			photo.Thumb = tmpThumbnailFile.Name()
 		}
 		msg = photo
 	} else {
 		photo := tgbotapi.NewDocument(chatID, tmpFile.Name())
 		photo.Caption = title
-		if thumbnailUrl != "" {
+		if tmpThumbnailFile != nil {
 			photo.Thumb = tmpThumbnailFile.Name()
 		}
 		msg = photo

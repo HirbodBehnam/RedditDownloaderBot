@@ -65,7 +65,7 @@ func fetchPostDetailsAndSend(text string, chatID int64, messageID int) {
 	// Check the result type
 	msg := tgbotapi.NewMessage(chatID, "")
 	msg.ReplyToMessageID = messageID
-	msg.ParseMode = "MarkdownV2"
+	msg.ParseMode = MarkdownV2
 	switch data := result.(type) {
 	case reddit.FetchResultText:
 		msg.Text = data.Title + "\n" + data.Text
@@ -81,9 +81,9 @@ func fetchPostDetailsAndSend(text string, chatID int64, messageID int) {
 		if len(data.Medias) == 1 && data.Type != reddit.FetchResultMediaTypePhoto {
 			switch data.Type {
 			case reddit.FetchResultMediaTypeGif:
-				handleGifUpload(data.Medias[0].Link, data.ThumbnailLink, data.Title, chatID)
+				handleGifUpload(data.Medias[0].Link, data.Title, data.ThumbnailLink, chatID)
 			case reddit.FetchResultMediaTypeVideo:
-				handleVideoUpload(data.Medias[0].Link, data.ThumbnailLink, data.Title, chatID)
+				handleVideoUpload(data.Medias[0].Link, data.Title, data.ThumbnailLink, chatID)
 			}
 			return
 		}

@@ -49,6 +49,7 @@ func handleGifUpload(gifUrl, title, thumbnailUrl string, chatID int64) {
 	if tmpThumbnailFile != nil {
 		msg.Thumb = tmpThumbnailFile.Name()
 	}
+	msg.ParseMode = MarkdownV2
 	_, err = bot.Send(msg)
 	if err != nil {
 		_, _ = bot.Send(tgbotapi.NewMessage(chatID, "Cannot upload file.\nHere is the link to file: "+gifUrl))
@@ -95,6 +96,7 @@ func handleVideoUpload(vidUrl, title, thumbnailUrl string, chatID int64) {
 	if tmpThumbnailFile != nil {
 		msg.Thumb = tmpThumbnailFile.Name()
 	}
+	msg.ParseMode = MarkdownV2
 	_, err = bot.Send(msg)
 	if err != nil {
 		log.Println("Cannot upload file:", err)
@@ -151,6 +153,7 @@ func handlePhotoUpload(photoUrl, title, thumbnailUrl string, chatID int64, asPho
 		if tmpThumbnailFile != nil {
 			photo.Thumb = tmpThumbnailFile.Name()
 		}
+		photo.ParseMode = MarkdownV2
 		msg = photo
 	} else {
 		photo := tgbotapi.NewDocument(chatID, tmpFile.Name())
@@ -158,6 +161,7 @@ func handlePhotoUpload(photoUrl, title, thumbnailUrl string, chatID int64, asPho
 		if tmpThumbnailFile != nil {
 			photo.Thumb = tmpThumbnailFile.Name()
 		}
+		photo.ParseMode = MarkdownV2
 		msg = photo
 	}
 	_, err = bot.Send(msg)
@@ -244,20 +248,23 @@ func handleAlbumUpload(album reddit.FetchResultAlbum, chatID int64) {
 // You can also close the channel to stop the reporter
 func statusReporter(chatID int64, action string) chan struct{} {
 	doneChan := make(chan struct{}, 1)
-	go func() {
-		ticker := time.NewTicker(time.Second * 5) // we have to send it each 5 seconds
-		_, _ = bot.Send(tgbotapi.NewChatAction(chatID, action))
-		for {
-			select {
-			case <-ticker.C:
-				_, _ = bot.Send(tgbotapi.NewChatAction(chatID, action))
-			case <-doneChan:
-				ticker.Stop()
-				return
-			}
-		}
-	}()
+	go statusReporterGoroutine(chatID, action, doneChan)
 	return doneChan
+}
+
+// statusReporterGoroutine must be called from another goroutine to report the status of upload
+func statusReporterGoroutine(chatID int64, action string, done <-chan struct{}) {
+	ticker := time.NewTicker(time.Second * 5) // we have to send it each 5 seconds
+	_, _ = bot.Send(tgbotapi.NewChatAction(chatID, action))
+	for {
+		select {
+		case <-ticker.C:
+			_, _ = bot.Send(tgbotapi.NewChatAction(chatID, action))
+		case <-done:
+			ticker.Stop()
+			return
+		}
+	}
 }
 
 // generateVideoUrlsMessage generates a text message which it can be used to give the user

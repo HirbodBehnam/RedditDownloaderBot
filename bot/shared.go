@@ -19,6 +19,8 @@ const PhotoMaxUploadSize = 10 * 1000 * 1000
 // Otherwise the telegram will show them without one
 const NoThumbnailNeededSize = 10 * 1000 * 1000
 
+const MarkdownV2 = "MarkdownV2"
+
 func init() {
 	mediaCache = cache.New(5*time.Minute, 10*time.Minute)
 }

@@ -18,7 +18,7 @@ import (
 // qualities is the possible qualities of videos in reddit
 var qualities = [...]string{"1080", "720", "480", "360", "240", "96"}
 
-var giphyCommentRegex = regexp.MustCompile("!\\[gif]\\(giphy\\|(\\w+)\\)")
+var giphyCommentRegex = regexp.MustCompile("!\\[gif]\\(giphy\\|(\\w+)(?:\\|downsized)?\\)")
 
 // StartFetch gets the post info from url
 // The fetchResult can be one of the following types:
@@ -42,7 +42,7 @@ func (o *Oauth) StartFetch(postUrl string) (fetchResult interface{}, fetchError 
 		return
 	}
 	if isComment {
-		root, err := o.GetComment(postUrl)
+		root, err := o.GetComment(postId)
 		if err != nil {
 			return nil, &FetchError{
 				NormalError: "cannot download comment: " + err.Error(),
@@ -57,7 +57,8 @@ func (o *Oauth) StartFetch(postUrl string) (fetchResult interface{}, fetchError 
 					Link:    fmt.Sprintf("https://i.giphy.com/media/%s/giphy.gif", matches[1]),
 					Quality: "giphy",
 				}},
-				Type: FetchResultMediaTypeGif,
+				Type:  FetchResultMediaTypeGif,
+				Title: strings.ReplaceAll(text, matches[0], ""),
 			}, nil
 		}
 		// Normal comment

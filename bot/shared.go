@@ -19,7 +19,8 @@ const PhotoMaxUploadSize = 10 * 1000 * 1000
 // Otherwise the telegram will show them without one
 const NoThumbnailNeededSize = 10 * 1000 * 1000
 
-const MarkdownV2 = "MarkdownV2"
+// Markdown is the styling format used in telegram messages
+const Markdown = "Markdown"
 
 func init() {
 	mediaCache = cache.New(5*time.Minute, 10*time.Minute)

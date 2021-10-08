@@ -65,7 +65,7 @@ func fetchPostDetailsAndSend(text string, chatID int64, messageID int) {
 	// Check the result type
 	msg := tgbotapi.NewMessage(chatID, "")
 	msg.ReplyToMessageID = messageID
-	msg.ParseMode = MarkdownV2
+	msg.ParseMode = Markdown
 	switch data := result.(type) {
 	case reddit.FetchResultText:
 		msg.Text = data.Title + "\n" + data.Text

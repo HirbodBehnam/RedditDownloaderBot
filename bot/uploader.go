@@ -49,7 +49,6 @@ func handleGifUpload(gifUrl, title, thumbnailUrl string, chatID int64) {
 	if tmpThumbnailFile != nil {
 		msg.Thumb = tmpThumbnailFile.Name()
 	}
-	msg.ParseMode = MarkdownV2
 	_, err = bot.Send(msg)
 	if err != nil {
 		_, _ = bot.Send(tgbotapi.NewMessage(chatID, "Cannot upload file.\nHere is the link to file: "+gifUrl))
@@ -96,7 +95,6 @@ func handleVideoUpload(vidUrl, title, thumbnailUrl string, chatID int64) {
 	if tmpThumbnailFile != nil {
 		msg.Thumb = tmpThumbnailFile.Name()
 	}
-	msg.ParseMode = MarkdownV2
 	_, err = bot.Send(msg)
 	if err != nil {
 		log.Println("Cannot upload file:", err)
@@ -153,7 +151,6 @@ func handlePhotoUpload(photoUrl, title, thumbnailUrl string, chatID int64, asPho
 		if tmpThumbnailFile != nil {
 			photo.Thumb = tmpThumbnailFile.Name()
 		}
-		photo.ParseMode = MarkdownV2
 		msg = photo
 	} else {
 		photo := tgbotapi.NewDocument(chatID, tmpFile.Name())
@@ -161,7 +158,6 @@ func handlePhotoUpload(photoUrl, title, thumbnailUrl string, chatID int64, asPho
 		if tmpThumbnailFile != nil {
 			photo.Thumb = tmpThumbnailFile.Name()
 		}
-		photo.ParseMode = MarkdownV2
 		msg = photo
 	}
 	_, err = bot.Send(msg)

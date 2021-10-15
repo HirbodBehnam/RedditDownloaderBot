@@ -2,12 +2,9 @@ package util
 
 import (
 	"encoding/base64"
-	"errors"
 	"github.com/HirbodBehnam/RedditDownloaderBot/config"
 	"github.com/google/uuid"
-	"io"
 	"log"
-	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
@@ -50,19 +47,4 @@ func CheckFileSize(f string, allowed int64) bool {
 // So instead of 36 chars we have 24
 func UUIDToBase64(id uuid.UUID) string {
 	return base64.StdEncoding.EncodeToString(id[:])
-}
-
-// DownloadToFile downloads a link to a file
-func DownloadToFile(link string, f *os.File) error {
-	resp, err := config.GlobalHttpClient.Get(link)
-	if err != nil {
-		return err
-	}
-	if resp.StatusCode == http.StatusForbidden {
-		_ = resp.Body.Close()
-		return errors.New("forbidden")
-	}
-	_, err = io.Copy(f, resp.Body)
-	_ = resp.Body.Close()
-	return err
 }

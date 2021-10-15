@@ -26,7 +26,7 @@ const encodedGrantType = "grant_type=client_credentials&duration=permanent"
 
 var RateLimitError = errors.New("rate limit reached")
 
-// RedditOauth is a struct which can talk to reddit endpoints
+// Oauth is a struct which can talk to reddit endpoints
 type Oauth struct {
 	// When we should make the next request
 	rateLimit time.Time

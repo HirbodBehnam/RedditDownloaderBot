@@ -2,14 +2,25 @@ package reddit
 
 import (
 	"bytes"
+	"errors"
+	"github.com/HirbodBehnam/RedditDownloaderBot/config"
 	"github.com/HirbodBehnam/RedditDownloaderBot/util"
+	"io"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
 	"strings"
 )
+
+// We don't download anything more than this size
+const maxDownloadSize = 50 * 1000 * 1000
+
+// FileTooBigError indicates that this file is too big to be uploaded to Telegram
+// So we don't download it at first place
+var FileTooBigError = errors.New("file too big")
 
 // DownloadPhoto downloads a photo from reddit and returns the saved file in it
 func DownloadPhoto(link string) (*os.File, error) {
@@ -28,7 +39,7 @@ func DownloadPhoto(link string) (*os.File, error) {
 		return nil, err
 	}
 	// Download the file
-	err = util.DownloadToFile(link, tmpFile)
+	err = downloadToFile(link, tmpFile)
 	if err != nil {
 		_ = os.Remove(tmpFile.Name())
 		return nil, err
@@ -52,7 +63,7 @@ func DownloadVideo(vidUrl string) (audioUrl string, videoFile *os.File, err erro
 			_ = os.Remove(videoFile.Name())
 		}
 	}()
-	err = util.DownloadToFile(vidUrl, videoFile)
+	err = downloadToFile(vidUrl, videoFile)
 	if err != nil {
 		return
 	}
@@ -72,7 +83,7 @@ func DownloadVideo(vidUrl string) (audioUrl string, videoFile *os.File, err erro
 		_ = audFile.Close()
 		_ = os.Remove(audFile.Name())
 	}()
-	hasAudio := util.DownloadToFile(audioUrl, audFile) == nil
+	hasAudio := downloadToFile(audioUrl, audFile) == nil
 	if !hasAudio {
 		audioUrl = ""
 	}
@@ -118,7 +129,7 @@ func DownloadGif(link string) (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = util.DownloadToFile(link, tmpFile)
+	err = downloadToFile(link, tmpFile)
 	if err != nil {
 		_ = tmpFile.Close()
 		_ = os.Remove(tmpFile.Name())
@@ -135,7 +146,7 @@ func DownloadThumbnail(link string) (*os.File, error) {
 		return nil, err
 	}
 	// Download to file
-	err = util.DownloadToFile(link, tmpFile)
+	err = downloadToFile(link, tmpFile)
 	if err != nil {
 		_ = tmpFile.Close()
 		_ = os.Remove(tmpFile.Name())
@@ -143,4 +154,29 @@ func DownloadThumbnail(link string) (*os.File, error) {
 	}
 	// We are good
 	return tmpFile, nil
+}
+
+// downloadToFile downloads a link to a file
+// It also checks where the file is too big to be uploaded to Telegram or not
+// If the file is too big, it returns FileTooBigError
+func downloadToFile(link string, f *os.File) error {
+	resp, err := config.GlobalHttpClient.Get(link)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode == http.StatusForbidden {
+		_ = resp.Body.Close()
+		return errors.New("forbidden")
+	}
+	if resp.ContentLength == -1 {
+		_ = resp.Body.Close()
+		return errors.New("unknown length")
+	}
+	if resp.ContentLength > maxDownloadSize {
+		_ = resp.Body.Close()
+		return FileTooBigError
+	}
+	_, err = io.Copy(f, resp.Body)
+	_ = resp.Body.Close()
+	return err
 }

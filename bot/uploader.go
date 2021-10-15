@@ -183,8 +183,10 @@ func handleAlbumUpload(album reddit.FetchResultAlbum, chatID int64) {
 		}
 	}()
 	fileConfigs := make([]interface{}, 0, len(album.Album))
+	fileLinks := make([]string, 0, len(album.Album))
 	for _, media := range album.Album {
 		var tmpFile *os.File
+		var link string
 		switch media.Type {
 		case reddit.FetchResultMediaTypePhoto:
 			tmpFile, err = reddit.DownloadPhoto(media.Link)
@@ -192,6 +194,8 @@ func handleAlbumUpload(album reddit.FetchResultAlbum, chatID int64) {
 				f := tgbotapi.NewInputMediaPhoto(tmpFile.Name())
 				f.Caption = media.Caption
 				fileConfigs = append(fileConfigs, f)
+				link = media.Link
+				fileLinks = append(fileLinks, media.Link)
 			}
 		case reddit.FetchResultMediaTypeGif:
 			tmpFile, err = reddit.DownloadGif(media.Link)
@@ -199,6 +203,8 @@ func handleAlbumUpload(album reddit.FetchResultAlbum, chatID int64) {
 				f := tgbotapi.NewInputMediaVideo(tmpFile.Name()) // not sure why...
 				f.Caption = media.Caption
 				fileConfigs = append(fileConfigs, f)
+				link = media.Link
+				fileLinks = append(fileLinks, media.Link)
 			}
 		case reddit.FetchResultMediaTypeVideo:
 			_, tmpFile, err = reddit.DownloadVideo(media.Link)
@@ -206,10 +212,13 @@ func handleAlbumUpload(album reddit.FetchResultAlbum, chatID int64) {
 				f := tgbotapi.NewInputMediaVideo(tmpFile.Name())
 				f.Caption = media.Caption
 				fileConfigs = append(fileConfigs, f)
+				link = media.Link
+				fileLinks = append(fileLinks, media.Link)
 			}
 		}
 		if err != nil {
 			log.Println("cannot download media of gallery:", err)
+			_, _ = bot.Send(tgbotapi.NewMessage(chatID, "Cannot download gallery media; The link was: "+link))
 			continue
 		}
 		filePaths = append(filePaths, tmpFile)
@@ -220,9 +229,10 @@ func handleAlbumUpload(album reddit.FetchResultAlbum, chatID int64) {
 		_, err = bot.SendMediaGroup(tgbotapi.NewMediaGroup(chatID, fileConfigs[i*10:(i+1)*10]))
 		if err != nil {
 			log.Println("Cannot upload gallery:", err)
+			_, _ = bot.Send(tgbotapi.NewMessage(chatID, generateGalleryFailedMessage(fileLinks[i*10:(i+1)*10])))
 		}
 	}
-	err = nil
+	err = nil // needed for last error check
 	fileConfigs = fileConfigs[i*10:]
 	if len(fileConfigs) == 1 {
 		switch f := fileConfigs[0].(type) {
@@ -236,6 +246,7 @@ func handleAlbumUpload(album reddit.FetchResultAlbum, chatID int64) {
 	}
 	if err != nil {
 		log.Println("cannot upload gallery:", err)
+		_, _ = bot.Send(tgbotapi.NewMessage(chatID, generateGalleryFailedMessage(fileLinks[i*10:])))
 	}
 }
 
@@ -273,6 +284,19 @@ func generateVideoUrlsMessage(videoUrl, audioUrl string) string {
 	if audioUrl != "" {
 		sb.WriteString("\nHere is the link to audio file: ")
 		sb.WriteString(audioUrl)
+	}
+	return sb.String()
+}
+
+// generateGalleryFailedMessage generates an error message to send to user when uploading gallery goes wrong
+// The medias is the array of links to medias in the message which was meant to be uploaded
+func generateGalleryFailedMessage(medias []string) string {
+	var sb strings.Builder
+	sb.Grow(len(medias) * 120) // each link length I guess
+	sb.WriteString("Cannot upload gallery.\nHere are the links of the files:")
+	for _, media := range medias {
+		sb.WriteByte('\n')
+		sb.WriteString(media)
 	}
 	return sb.String()
 }

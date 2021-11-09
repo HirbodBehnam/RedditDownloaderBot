@@ -3,6 +3,7 @@ package bot
 import (
 	"encoding/json"
 	"github.com/HirbodBehnam/RedditDownloaderBot/reddit"
+	"github.com/HirbodBehnam/RedditDownloaderBot/util"
 )
 
 // CallbackButtonData is the data which is sent to us after user clicks on an inline button
@@ -31,7 +32,7 @@ const (
 // String returns the json format of CallbackButtonData
 func (c *CallbackButtonData) String() string {
 	b, _ := json.Marshal(c)
-	return string(b)
+	return util.ByteToString(b)
 }
 
 // CallbackDataCached is the data we store associated with an ID which is CallbackButtonData.ID

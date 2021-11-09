@@ -44,10 +44,10 @@ func handleGifUpload(gifUrl, title, thumbnailUrl string, chatID int64) {
 		}
 	}
 	// Upload it
-	msg := tgbotapi.NewAnimation(chatID, tmpFile.Name())
+	msg := tgbotapi.NewAnimation(chatID, tgbotapi.FilePath(tmpFile.Name()))
 	msg.Caption = title
 	if tmpThumbnailFile != nil {
-		msg.Thumb = tmpThumbnailFile.Name()
+		msg.Thumb = tgbotapi.FilePath(tmpThumbnailFile.Name())
 	}
 	_, err = bot.Send(msg)
 	if err != nil {
@@ -90,10 +90,10 @@ func handleVideoUpload(vidUrl, title, thumbnailUrl string, chatID int64) {
 		}
 	}
 	// Upload it
-	msg := tgbotapi.NewVideo(chatID, tmpFile.Name())
+	msg := tgbotapi.NewVideo(chatID, tgbotapi.FilePath(tmpFile.Name()))
 	msg.Caption = title
 	if tmpThumbnailFile != nil {
-		msg.Thumb = tmpThumbnailFile.Name()
+		msg.Thumb = tgbotapi.FilePath(tmpThumbnailFile.Name())
 	}
 	_, err = bot.Send(msg)
 	if err != nil {
@@ -146,17 +146,17 @@ func handlePhotoUpload(photoUrl, title, thumbnailUrl string, chatID int64, asPho
 	// Upload
 	var msg tgbotapi.Chattable
 	if asPhoto {
-		photo := tgbotapi.NewPhoto(chatID, tmpFile.Name())
+		photo := tgbotapi.NewPhoto(chatID, tgbotapi.FilePath(tmpFile.Name()))
 		photo.Caption = title
 		if tmpThumbnailFile != nil {
-			photo.Thumb = tmpThumbnailFile.Name()
+			photo.Thumb = tgbotapi.FilePath(tmpThumbnailFile.Name())
 		}
 		msg = photo
 	} else {
-		photo := tgbotapi.NewDocument(chatID, tmpFile.Name())
+		photo := tgbotapi.NewDocument(chatID, tgbotapi.FilePath(tmpFile.Name()))
 		photo.Caption = title
 		if tmpThumbnailFile != nil {
-			photo.Thumb = tmpThumbnailFile.Name()
+			photo.Thumb = tgbotapi.FilePath(tmpThumbnailFile.Name())
 		}
 		msg = photo
 	}
@@ -191,7 +191,7 @@ func handleAlbumUpload(album reddit.FetchResultAlbum, chatID int64) {
 		case reddit.FetchResultMediaTypePhoto:
 			tmpFile, err = reddit.DownloadPhoto(media.Link)
 			if err == nil {
-				f := tgbotapi.NewInputMediaPhoto(tmpFile.Name())
+				f := tgbotapi.NewInputMediaPhoto(tgbotapi.FilePath(tmpFile.Name()))
 				f.Caption = media.Caption
 				fileConfigs = append(fileConfigs, f)
 				link = media.Link
@@ -200,7 +200,7 @@ func handleAlbumUpload(album reddit.FetchResultAlbum, chatID int64) {
 		case reddit.FetchResultMediaTypeGif:
 			tmpFile, err = reddit.DownloadGif(media.Link)
 			if err == nil {
-				f := tgbotapi.NewInputMediaVideo(tmpFile.Name()) // not sure why...
+				f := tgbotapi.NewInputMediaVideo(tgbotapi.FilePath(tmpFile.Name())) // not sure why...
 				f.Caption = media.Caption
 				fileConfigs = append(fileConfigs, f)
 				link = media.Link
@@ -209,7 +209,7 @@ func handleAlbumUpload(album reddit.FetchResultAlbum, chatID int64) {
 		case reddit.FetchResultMediaTypeVideo:
 			_, tmpFile, err = reddit.DownloadVideo(media.Link)
 			if err == nil {
-				f := tgbotapi.NewInputMediaVideo(tmpFile.Name())
+				f := tgbotapi.NewInputMediaVideo(tgbotapi.FilePath(tmpFile.Name()))
 				f.Caption = media.Caption
 				fileConfigs = append(fileConfigs, f)
 				link = media.Link

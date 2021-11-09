@@ -8,6 +8,8 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"reflect"
+	"unsafe"
 )
 
 // IsUrl checks if a string is an url
@@ -47,4 +49,18 @@ func CheckFileSize(f string, allowed int64) bool {
 // So instead of 36 chars we have 24
 func UUIDToBase64(id uuid.UUID) string {
 	return base64.StdEncoding.EncodeToString(id[:])
+}
+
+// ByteToString converts a byte slice to string
+func ByteToString(b []byte) string {
+	// From strings.Builder.String()
+	return *(*string)(unsafe.Pointer(&b))
+}
+
+// StringToByte converts a string to byte array without copy
+// Please be really fucking careful with this function
+// DO NOT APPEND ANYTHING TO UNDERLYING SLICE AND DO NOT CHANGE IT
+// Use this function to call function like unmarshal text manually
+func StringToByte(s string) []byte {
+	return unsafe.Slice((*byte)(unsafe.Pointer((*reflect.StringHeader)(unsafe.Pointer(&s)).Data)), len(s))
 }

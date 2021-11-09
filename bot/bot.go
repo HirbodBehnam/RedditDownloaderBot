@@ -126,13 +126,14 @@ func handleCallback(dataString string, chatID int64, msgId int) {
 	defer func() {
 		if r := recover(); r != nil {
 			_, _ = bot.Send(tgbotapi.NewMessage(chatID, "Cannot get data. (panic)"))
+			log.Println("recovering from panic:", r)
 		}
 	}()
 	// Delete the message
 	_, _ = bot.Send(tgbotapi.NewDeleteMessage(chatID, msgId))
 	// Parse the data
 	var data CallbackButtonData
-	err := json.Unmarshal([]byte(dataString), &data)
+	err := json.Unmarshal(util.StringToByte(dataString), &data)
 	if err != nil {
 		_, _ = bot.Send(tgbotapi.NewMessage(chatID, "Broken callback data"))
 		return

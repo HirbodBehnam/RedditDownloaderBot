@@ -7,20 +7,40 @@ import (
 	"github.com/HirbodBehnam/RedditDownloaderBot/util"
 	"log"
 	"os"
+	"strconv"
+	"strings"
 )
 
 func main() {
 	var err error
-	if len(os.Args) < 4 {
-		log.Fatal("Please pass the bot token, reddit client app and reddit client secret as arguments.")
-	}
 	log.Println("Reddit Downloader Bot v" + config.Version)
 	if !util.DoesFfmpegExists() {
 		log.Println("WARNING: ffmpeg is not installed on your system")
 	}
-	bot.RedditOauth, err = reddit.NewRedditOauth(os.Args[2], os.Args[3])
+	// Load the variables
+	clientID := os.Getenv("CLIENT_ID")
+	clientSecret := os.Getenv("CLIENT_SECRET")
+	botToken := os.Getenv("BOT_TOKEN")
+	if clientID == "" || clientSecret == "" || botToken == "" {
+		log.Fatalln("Please set CLIENT_ID, CLIENT_SECRET and BOT_TOKEN")
+	}
+	// Start the reddit oauth
+	bot.RedditOauth, err = reddit.NewRedditOauth(clientID, clientSecret)
 	if err != nil {
 		log.Fatal("Cannot initialize the reddit oauth:", err.Error())
 	}
-	bot.RunBot(os.Args[1])
+	bot.RunBot(botToken, getAllowedUsers())
+}
+
+// getAllowedUsers gets the list of users which are allowed to use the bot
+func getAllowedUsers() (allowedIDs []int64) {
+	usersString := strings.Split(os.Getenv("ALLOWED_USERS"), ",")
+	allowedIDs = make([]int64, 0, len(usersString))
+	for _, idString := range usersString {
+		id, err := strconv.ParseInt(idString, 10, 64)
+		if err == nil {
+			allowedIDs = append(allowedIDs, id)
+		}
+	}
+	return
 }

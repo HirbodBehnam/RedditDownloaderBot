@@ -13,14 +13,14 @@ import (
 	"time"
 )
 
-// UserAgent of requests
-const UserAgent = "TelegramBot:Reddit-Downloader-Bot:" + config.Version + " (by /u/HirbodBehnam)"
+// userAgent of requests
+const userAgent = "TelegramBot:Reddit-Downloader-Bot:" + config.Version + " (by /u/HirbodBehnam)"
 
-// PostApiPoint is the endpoint format which we should get info about posts
-const PostApiPoint = "https://api.reddit.com/api/info/?id=t3_"
+// postApiPoint is the endpoint format which we should get info about posts
+const postApiPoint = "https://api.reddit.com/api/info/?id=t3_"
 
-// CommentApiPoint is the endpoint format which we should get info about comments
-const CommentApiPoint = "https://api.reddit.com/api/info/?id=t1_"
+// commentApiPoint is the endpoint format which we should get info about comments
+const commentApiPoint = "https://api.reddit.com/api/info/?id=t1_"
 
 const encodedGrantType = "grant_type=client_credentials&duration=permanent"
 
@@ -67,10 +67,20 @@ func NewRedditOauth(clientId, clientSecret string) (*Oauth, error) {
 func (o *Oauth) tokenRefresh(nextRefresh time.Duration) {
 	for {
 		time.Sleep(nextRefresh - time.Minute)
+		// Check rate limit
+		o.rateLimitMutex.RLock()
+		freedom := o.rateLimit
+		o.rateLimitMutex.RUnlock()
+		if time.Now().Before(freedom) {
+			time.Sleep(time.Now().Sub(freedom))
+			nextRefresh = 0 // do not wait in line "time.Sleep(nextRefresh - time.Minute)"
+			continue
+		}
+		// Request the token
 		err, nextRefreshCandidate := o.refreshTokenFunction()
 		if err != nil {
 			log.Printf("cannot refresh token: %s", err.Error())
-			nextRefresh = time.Minute
+			nextRefresh = 2 * time.Minute
 		} else {
 			nextRefresh = nextRefreshCandidate
 		}
@@ -81,7 +91,7 @@ func (o *Oauth) tokenRefresh(nextRefresh time.Duration) {
 func (o *Oauth) createToken() (error, time.Duration) {
 	// Build the request
 	req, _ := http.NewRequest("POST", "https://www.reddit.com/api/v1/access_token", strings.NewReader(encodedGrantType))
-	req.Header.Set("User-Agent", UserAgent)
+	req.Header.Set("User-Agent", userAgent)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.SetBasicAuth(o.clientId, o.clientSecret)
 	// Send the request
@@ -112,7 +122,7 @@ func (o *Oauth) refreshTokenFunction() (error, time.Duration) {
 	form.Set("grant_type", "refresh_token")
 	form.Set("refresh_token", o.refreshToken)
 	req, _ := http.NewRequest("POST", "https://www.reddit.com/api/v1/access_token", strings.NewReader(form.Encode()))
-	req.Header.Set("User-Agent", UserAgent)
+	req.Header.Set("User-Agent", userAgent)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.SetBasicAuth(o.clientId, o.clientSecret)
 	// Send the request
@@ -135,12 +145,12 @@ func (o *Oauth) refreshTokenFunction() (error, time.Duration) {
 
 // GetComment gets the info about a comment from reddit
 func (o *Oauth) GetComment(id string) (map[string]interface{}, error) {
-	return o.doGetJsonRequest(CommentApiPoint + id)
+	return o.doGetJsonRequest(commentApiPoint + id)
 }
 
 // GetPost gets the info about a post from reddit
 func (o *Oauth) GetPost(id string) (map[string]interface{}, error) {
-	return o.doGetJsonRequest(PostApiPoint + id)
+	return o.doGetJsonRequest(postApiPoint + id)
 }
 
 func (o *Oauth) doGetJsonRequest(Url string) (map[string]interface{}, error) {
@@ -156,7 +166,7 @@ func (o *Oauth) doGetJsonRequest(Url string) (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", UserAgent)
+	req.Header.Set("User-Agent", userAgent)
 	req.Header.Set("Authorization", o.authorizationHeader)
 	// Do the request
 	resp, err := config.GlobalHttpClient.Do(req)

@@ -12,7 +12,7 @@ import (
 )
 
 // RunBot runs the bot with the specified token
-func RunBot(token string) {
+func RunBot(token string, allowedUsers AllowedUsers) {
 	var err error
 	bot, err = tgbotapi.NewBotAPI(token)
 	if err != nil {
@@ -27,7 +27,7 @@ func RunBot(token string) {
 			go handleCallback(update.CallbackQuery.Data, update.CallbackQuery.Message.Chat.ID, update.CallbackQuery.Message.MessageID)
 			continue
 		}
-		if update.Message == nil { // Ignore any non-Message
+		if update.Message == nil || allowedUsers.IsAllowed(update.Message.From.ID) {
 			continue
 		}
 		// Only text messages are allowed

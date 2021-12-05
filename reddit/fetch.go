@@ -68,7 +68,7 @@ func (o *Oauth) StartFetch(postUrl string) (fetchResult interface{}, fetchError 
 	root, err := o.GetPost(postId)
 	if err != nil {
 		fetchError = &FetchError{
-			NormalError: "cannot get the post data" + err.Error(),
+			NormalError: "cannot get the post data: " + err.Error(),
 			BotError:    "Cannot get the post data",
 		}
 		return

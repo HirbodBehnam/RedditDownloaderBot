@@ -60,6 +60,7 @@ func fetchPostDetailsAndSend(text string, chatID int64, messageID int) {
 		msg := tgbotapi.NewMessage(chatID, fetchErr.BotError)
 		msg.ReplyToMessageID = messageID
 		_, _ = bot.Send(msg)
+		log.Println("cannot get post ", text, ":", fetchErr.NormalError)
 		return
 	}
 	// Check the result type

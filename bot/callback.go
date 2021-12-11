@@ -44,6 +44,9 @@ type CallbackDataCached struct {
 	Title string
 	// Thumbnail link of the post
 	ThumbnailLink string
+	// The Links[AudioIndex] contains the audio of a video
+	// If there is no audio, this must be -1
+	AudioIndex int
 	// What media is this
 	Type reddit.FetchResultMediaType
 }

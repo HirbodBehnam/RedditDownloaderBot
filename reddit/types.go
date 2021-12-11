@@ -1,5 +1,8 @@
 package reddit
 
+// DownloadAudioQuality is the string to send to user when they want to download audio of a video
+const DownloadAudioQuality = "Audio"
+
 // FetchError is an error type which might be returned from StartFetch function
 type FetchError struct {
 	NormalError string
@@ -38,12 +41,21 @@ type FetchResultMediaEntries []FetchResultMediaEntry
 
 // ToLinkMap creates a map of int -> string which represents the index of each entry with the link of it
 func (e FetchResultMediaEntries) ToLinkMap() map[int]string {
-	result := make(map[int]string)
+	result := make(map[int]string, len(e))
 	for i, media := range e {
 		result[i] = media.Link
 	}
 	return result
 }
+
+// FetchResultMediaType says either is media is photo, gif or video
+type FetchResultMediaType byte
+
+const (
+	FetchResultMediaTypePhoto FetchResultMediaType = iota
+	FetchResultMediaTypeGif
+	FetchResultMediaTypeVideo
+)
 
 // FetchResultMedia is the result of the
 type FetchResultMedia struct {
@@ -58,14 +70,25 @@ type FetchResultMedia struct {
 	Type FetchResultMediaType
 }
 
-// FetchResultMediaType says either is media is photo, gif or video
-type FetchResultMediaType byte
-
-const (
-	FetchResultMediaTypePhoto FetchResultMediaType = iota
-	FetchResultMediaTypeGif
-	FetchResultMediaTypeVideo
-)
+// HasAudio checks if a video does have audio
+// It returns false if FetchResultMedia.Type is not FetchResultMediaTypeVideo
+// index will be -1 if it doesn't have audio
+func (f *FetchResultMedia) HasAudio() (index int, has bool) {
+	if f.Type != FetchResultMediaTypeVideo {
+		return -1, false
+	}
+	// Edge case
+	if len(f.Medias) == 0 {
+		return -1, false
+	}
+	// We just need to check the final element in order to see if it does have audio or not
+	has = f.Medias[len(f.Medias)-1].Quality == DownloadAudioQuality
+	index = len(f.Medias) - 1
+	if !has {
+		index = -1
+	}
+	return
+}
 
 // FetchResultAlbumEntry is one media of album
 type FetchResultAlbumEntry struct {

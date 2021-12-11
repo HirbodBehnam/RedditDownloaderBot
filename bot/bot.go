@@ -85,15 +85,19 @@ func fetchPostDetailsAndSend(text string, chatID int64, messageID int) {
 			switch data.Type {
 			case reddit.FetchResultMediaTypeGif:
 				handleGifUpload(data.Medias[0].Link, data.Title, data.ThumbnailLink, chatID)
+				return
 			case reddit.FetchResultMediaTypeVideo:
-				handleVideoUpload(data.Medias[0].Link, data.Title, data.ThumbnailLink, chatID)
+				// If the video does have an audio, ask user if they want the audio
+				if _, hasAudio := data.HasAudio(); hasAudio {
+					handleVideoUpload(data.Medias[0].Link, data.Title, data.ThumbnailLink, chatID)
+					return
+				}
 			}
-			return
 		}
 		// Allow the user to select quality
 		msg.Text = "Please select the quality"
-		id, _ := uuid.NewUUID()
-		idString := util.UUIDToBase64(id)
+		idString := util.UUIDToBase64(uuid.New())
+		audioIndex, _ := data.HasAudio()
 		switch data.Type {
 		case reddit.FetchResultMediaTypePhoto:
 			msg.ReplyMarkup = createPhotoInlineKeyboard(idString, data)
@@ -108,6 +112,7 @@ func fetchPostDetailsAndSend(text string, chatID int64, messageID int) {
 			Title:         data.Title,
 			ThumbnailLink: data.ThumbnailLink,
 			Type:          data.Type,
+			AudioIndex:    audioIndex,
 		}, cache.DefaultExpiration)
 	case reddit.FetchResultAlbum:
 		handleAlbumUpload(data, chatID)
@@ -162,6 +167,10 @@ func handleCallback(dataString string, chatID int64, msgId int) {
 	case reddit.FetchResultMediaTypePhoto:
 		handlePhotoUpload(link, cachedData.Title, cachedData.ThumbnailLink, chatID, data.Mode == CallbackButtonDataModePhoto)
 	case reddit.FetchResultMediaTypeVideo:
-		handleVideoUpload(link, cachedData.Title, cachedData.ThumbnailLink, chatID)
+		if data.LinkKey == cachedData.AudioIndex {
+			handleAudioUpload(link, cachedData.Title, chatID)
+		} else {
+			handleVideoUpload(link, cachedData.Title, cachedData.ThumbnailLink, chatID)
+		}
 	}
 }

@@ -68,12 +68,7 @@ func DownloadVideo(vidUrl string) (audioUrl string, videoFile *os.File, err erro
 		return
 	}
 	// Otherwise, search for an audio file
-	audioUrl = vidUrl[:strings.LastIndex(vidUrl, "/")] // base url
-	if strings.Contains(vidUrl, ".mp4") {              // new reddit api or sth idk
-		audioUrl += "/DASH_audio.mp4"
-	} else { // old format
-		audioUrl += "/audio"
-	}
+	audioUrl, hasAudio := HasAudio(vidUrl)
 	audFile, err := ioutil.TempFile("", "*.mp4")
 	if err != nil {
 		return
@@ -83,9 +78,9 @@ func DownloadVideo(vidUrl string) (audioUrl string, videoFile *os.File, err erro
 		_ = audFile.Close()
 		_ = os.Remove(audFile.Name())
 	}()
-	hasAudio := downloadToFile(audioUrl, audFile) == nil
-	if !hasAudio {
+	if downloadToFile(audioUrl, audFile) != nil {
 		audioUrl = ""
+		hasAudio = false
 	}
 	// Check ffmpeg; If it doesn't exist, just return the video file
 	if !util.DoesFfmpegExists() {
@@ -99,7 +94,11 @@ func DownloadVideo(vidUrl string) (audioUrl string, videoFile *os.File, err erro
 		if err != nil {
 			return
 		}
-		cmd := exec.Command("ffmpeg", "-i", videoFile.Name(), "-i", audFile.Name(), "-c", "copy", finalFile.Name(), "-y")
+		cmd := exec.Command("ffmpeg",
+			"-i", videoFile.Name(),
+			"-i", audFile.Name(),
+			"-c", "copy",
+			finalFile.Name(), "-y")
 		var stderr bytes.Buffer
 		cmd.Stderr = &stderr
 		err = cmd.Run()
@@ -156,6 +155,24 @@ func DownloadThumbnail(link string) (*os.File, error) {
 	return tmpFile, nil
 }
 
+// DownloadAudio simply downloads an audio file from reddit via direct link
+func DownloadAudio(audioUrl string) (*os.File, error) {
+	tmpFile, err := ioutil.TempFile("", "*.m4a")
+	if err != nil {
+		log.Println("Cannot create temp file for audio:", err)
+		return nil, err
+	}
+	// Download to file
+	err = downloadToFile(audioUrl, tmpFile)
+	if err != nil {
+		_ = tmpFile.Close()
+		_ = os.Remove(tmpFile.Name())
+		return nil, err
+	}
+	// We are good
+	return tmpFile, nil
+}
+
 // downloadToFile downloads a link to a file
 // It also checks where the file is too big to be uploaded to Telegram or not
 // If the file is too big, it returns FileTooBigError
@@ -179,4 +196,18 @@ func downloadToFile(link string, f *os.File) error {
 	_, err = io.Copy(f, resp.Body)
 	_ = resp.Body.Close()
 	return err
+}
+
+// HasAudio checks if a video contains audio
+func HasAudio(videoURL string) (audioURL string, hasAudio bool) {
+	// Get the audio URL
+	audioURL = videoURL[:strings.LastIndex(videoURL, "/")] // base url
+	if strings.Contains(videoURL, ".mp4") {                // new reddit api or sth idk
+		audioURL += "/DASH_audio.mp4"
+	} else { // old format
+		audioURL += "/audio"
+	}
+	// Check if it exists
+	resp, err := config.GlobalHttpClient.Head(audioURL)
+	return audioURL, err == nil && resp.StatusCode == http.StatusOK
 }

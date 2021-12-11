@@ -250,6 +250,31 @@ func handleAlbumUpload(album reddit.FetchResultAlbum, chatID int64) {
 	}
 }
 
+// handleAudioUpload simply downloads then uploads an audio to Telegram
+func handleAudioUpload(audioURL, title string, chatID int64) {
+	// Send status
+	stopReportChannel := statusReporter(chatID, "upload_voice")
+	defer close(stopReportChannel)
+	// Create a temp file
+	audioFile, err := reddit.DownloadAudio(audioURL)
+	if err != nil {
+		_, _ = bot.Send(tgbotapi.NewMessage(chatID, "Cannot download audio; "+generateAudioURLMessage(audioURL)))
+		return
+	}
+	defer func() {
+		_ = audioFile.Close()
+		_ = os.Remove(audioFile.Name())
+	}()
+	// Simply upload it to telegram
+	msg := tgbotapi.NewDocument(chatID, tgbotapi.FilePath(audioFile.Name()))
+	msg.Caption = title
+	_, err = bot.Send(msg)
+	if err != nil {
+		_, _ = bot.Send(tgbotapi.NewMessage(chatID, "Cannot upload audio; "+generateAudioURLMessage(audioURL)))
+		return
+	}
+}
+
 // statusReporter starts reporting for uploading a thing in telegram
 // This function returns a channel which a message must be sent to it when reporting must be stopped
 // You can also close the channel to stop the reporter
@@ -282,10 +307,15 @@ func generateVideoUrlsMessage(videoUrl, audioUrl string) string {
 	sb.WriteString("Here is the link to video file: ")
 	sb.WriteString(videoUrl)
 	if audioUrl != "" {
-		sb.WriteString("\nHere is the link to audio file: ")
-		sb.WriteString(audioUrl)
+		sb.WriteString("\n")
+		sb.WriteString(generateAudioURLMessage(audioUrl))
 	}
 	return sb.String()
+}
+
+// generateAudioURLMessage generates a text to send to user when downloading an audio fails
+func generateAudioURLMessage(audioURL string) string {
+	return "Here is the link to audio file: " + audioURL
 }
 
 // generateGalleryFailedMessage generates an error message to send to user when uploading gallery goes wrong

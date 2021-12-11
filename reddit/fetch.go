@@ -436,7 +436,7 @@ func extractPhotoGifQualities(data map[string]interface{}) []FetchResultMediaEnt
 // extractVideoQualities gets all possible qualities from a main video url
 // It uses the quality in video URL to determine all lower qualities which are available
 func extractVideoQualities(vidUrl string) []FetchResultMediaEntry {
-	result := make([]FetchResultMediaEntry, 0, len(qualities))
+	result := make([]FetchResultMediaEntry, 0, len(qualities)+1) // +1 for audio
 	// Get max res
 	u, _ := url.Parse(vidUrl)
 	u.RawQuery = ""
@@ -466,6 +466,13 @@ func extractVideoQualities(vidUrl string) []FetchResultMediaEntry {
 		result = append(result, FetchResultMediaEntry{
 			Link:    vidUrl,
 			Quality: "source",
+		})
+	}
+	// Check for audio
+	if audioLink, hasAudio := HasAudio(result[0].Link); hasAudio {
+		result = append(result, FetchResultMediaEntry{
+			Link:    audioLink,
+			Quality: DownloadAudioQuality,
 		})
 	}
 	return result

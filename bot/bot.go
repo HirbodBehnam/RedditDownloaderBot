@@ -27,7 +27,11 @@ func RunBot(token string, allowedUsers AllowedUsers) {
 			go handleCallback(update.CallbackQuery.Data, update.CallbackQuery.Message.Chat.ID, update.CallbackQuery.Message.MessageID)
 			continue
 		}
-		if update.Message == nil || !allowedUsers.IsAllowed(update.Message.From.ID) {
+		if update.Message == nil {
+			continue
+		}
+		if !allowedUsers.IsAllowed(update.Message.From.ID) {
+			// You might want to implement a logic here
 			continue
 		}
 		// Only text messages are allowed

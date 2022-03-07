@@ -6,10 +6,9 @@ import (
 	"github.com/HirbodBehnam/RedditDownloaderBot/config"
 	"log"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
-	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -28,25 +27,20 @@ var RateLimitError = errors.New("rate limit reached")
 
 // Oauth is a struct which can talk to reddit endpoints
 type Oauth struct {
-	// When we should make the next request
-	rateLimit time.Time
 	// The client id of this app
 	clientId string
 	// The client secret of this app
 	clientSecret string
 	// The authorization header we should send to each request
 	authorizationHeader string
-	// The refresh token to refresh the authorizationHeader
-	refreshToken string
-	// The mutex for rate limit
-	rateLimitMutex sync.RWMutex
+	// When we should make the next request in unix epoch
+	rateLimit int64
 }
 
 // tokenRequestResponse is the result of https://www.reddit.com/api/v1/access_token endpoint
 type tokenRequestResponse struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	ExpiresIn    int64  `json:"expires_in"`
+	AccessToken string `json:"access_token"`
+	ExpiresIn   int64  `json:"expires_in"`
 }
 
 // NewRedditOauth returns a new RedditOauth to be used to get posts from reddit
@@ -55,7 +49,7 @@ func NewRedditOauth(clientId, clientSecret string) (*Oauth, error) {
 		clientId:     clientId,
 		clientSecret: clientSecret,
 	}
-	err, nextRefresh := redditOauth.createToken()
+	nextRefresh, err := redditOauth.createToken()
 	if err != nil {
 		return nil, err
 	}
@@ -68,18 +62,16 @@ func (o *Oauth) tokenRefresh(nextRefresh time.Duration) {
 	for {
 		time.Sleep(nextRefresh - time.Minute)
 		// Check rate limit
-		o.rateLimitMutex.RLock()
-		freedom := o.rateLimit
-		o.rateLimitMutex.RUnlock()
-		if time.Now().Before(freedom) {
-			time.Sleep(time.Now().Sub(freedom))
+		freedom := atomic.LoadInt64(&o.rateLimit)
+		if time.Now().Unix() < freedom {
+			time.Sleep(time.Now().Sub(time.Unix(freedom, 0)))
 			nextRefresh = 0 // do not wait in line "time.Sleep(nextRefresh - time.Minute)"
 			continue
 		}
 		// Request the token
-		err, nextRefreshCandidate := o.refreshTokenFunction()
+		nextRefreshCandidate, err := o.createToken()
 		if err != nil {
-			log.Printf("cannot refresh token: %s", err.Error())
+			log.Printf("cannot re-generate token: %s", err.Error())
 			nextRefresh = 2 * time.Minute
 		} else {
 			nextRefresh = nextRefreshCandidate
@@ -88,7 +80,7 @@ func (o *Oauth) tokenRefresh(nextRefresh time.Duration) {
 }
 
 // createToken creates an RedditOauth.authorizationHeader and returns when will the next token expire
-func (o *Oauth) createToken() (error, time.Duration) {
+func (o *Oauth) createToken() (time.Duration, error) {
 	// Build the request
 	req, _ := http.NewRequest("POST", "https://www.reddit.com/api/v1/access_token", strings.NewReader(encodedGrantType))
 	req.Header.Set("User-Agent", userAgent)
@@ -97,50 +89,21 @@ func (o *Oauth) createToken() (error, time.Duration) {
 	// Send the request
 	resp, err := config.GlobalHttpClient.Do(req)
 	if err != nil {
-		return err, 0
+		return 0, err
 	}
 	// Parse the response
 	var body tokenRequestResponse
 	err = json.NewDecoder(resp.Body).Decode(&body)
 	_ = resp.Body.Close()
 	if err != nil {
-		return err, 0
+		return 0, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return errors.New("status code is not 200. It is " + resp.Status), 0
+		return 0, errors.New("status code is not 200. It is " + resp.Status)
 	}
 	// Set the data
 	o.authorizationHeader = "bearer: " + body.AccessToken
-	o.refreshToken = body.RefreshToken
-	return nil, time.Duration(body.ExpiresIn) * time.Second
-}
-
-// refreshTokenFunction refreshes the token from reddit servers
-func (o *Oauth) refreshTokenFunction() (error, time.Duration) {
-	// Build the request
-	form := url.Values{}
-	form.Set("grant_type", "refresh_token")
-	form.Set("refresh_token", o.refreshToken)
-	req, _ := http.NewRequest("POST", "https://www.reddit.com/api/v1/access_token", strings.NewReader(form.Encode()))
-	req.Header.Set("User-Agent", userAgent)
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.SetBasicAuth(o.clientId, o.clientSecret)
-	// Send the request
-	resp, err := config.GlobalHttpClient.Do(req)
-	if err != nil {
-		return err, 0
-	}
-	// Parse the response
-	var body tokenRequestResponse
-	err = json.NewDecoder(resp.Body).Decode(&body)
-	_ = resp.Body.Close()
-	if err != nil {
-		return err, 0
-	}
-	if resp.StatusCode != http.StatusOK {
-		return errors.New("status code is not 200. It is " + resp.Status), 0
-	}
-	return nil, time.Duration(body.ExpiresIn) * time.Second
+	return time.Duration(body.ExpiresIn) * time.Second, nil
 }
 
 // GetComment gets the info about a comment from reddit
@@ -155,12 +118,9 @@ func (o *Oauth) GetPost(id string) (map[string]interface{}, error) {
 
 func (o *Oauth) doGetJsonRequest(Url string) (map[string]interface{}, error) {
 	// Check rate limit
-	o.rateLimitMutex.RLock()
-	if time.Now().Before(o.rateLimit) {
-		o.rateLimitMutex.RUnlock()
+	if time.Now().Unix() < atomic.LoadInt64(&o.rateLimit) {
 		return nil, RateLimitError
 	}
-	o.rateLimitMutex.RUnlock()
 	// Build the request
 	req, err := http.NewRequest("GET", Url, nil)
 	if err != nil {
@@ -176,9 +136,7 @@ func (o *Oauth) doGetJsonRequest(Url string) (map[string]interface{}, error) {
 	// Check the rate limit
 	if rateLimit, err := strconv.Atoi(resp.Header.Get("X-Ratelimit-Remaining")); err == nil && rateLimit == 0 {
 		freedom, _ := strconv.Atoi(resp.Header.Get("X-Ratelimit-Reset"))
-		o.rateLimitMutex.Lock()
-		o.rateLimit = time.Now().Add(time.Duration(freedom) * time.Second)
-		o.rateLimitMutex.Unlock()
+		atomic.StoreInt64(&o.rateLimit, time.Now().Unix()+int64(freedom))
 	}
 	// Read the body
 	var responseBody map[string]interface{}

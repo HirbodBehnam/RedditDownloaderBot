@@ -266,7 +266,7 @@ func handleAudioUpload(audioURL, title string, chatID int64) {
 		_ = os.Remove(audioFile.Name())
 	}()
 	// Simply upload it to telegram
-	msg := tgbotapi.NewDocument(chatID, tgbotapi.FilePath(audioFile.Name()))
+	msg := tgbotapi.NewAudio(chatID, tgbotapi.FilePath(audioFile.Name()))
 	msg.Caption = title
 	_, err = bot.Send(msg)
 	if err != nil {

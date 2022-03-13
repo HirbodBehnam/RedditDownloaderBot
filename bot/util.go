@@ -72,8 +72,17 @@ func (f telegramUploadOsFile) NeedsUpload() bool {
 }
 
 func (f telegramUploadOsFile) UploadData() (string, io.Reader, error) {
+	// Move the file pointer to beginning
+	_, err := f.Seek(0, io.SeekStart)
+	if err != nil {
+		return "", nil, err
+	}
 	// Note: I can use io.NopCloser in order to make the bot not close the file
-	return f.Name(), f, nil
+	s, err := f.Stat()
+	if err != nil {
+		return "", nil, err
+	}
+	return s.Name(), f, nil
 }
 
 func (f telegramUploadOsFile) SendData() string {

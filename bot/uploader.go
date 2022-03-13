@@ -93,6 +93,7 @@ func handleVideoUpload(vidUrl, title, thumbnailUrl string, duration int, chatID 
 	msg := tgbotapi.NewVideo(chatID, telegramUploadOsFile{tmpFile})
 	msg.Caption = title
 	msg.Duration = duration
+	msg.SupportsStreaming = true
 	if tmpThumbnailFile != nil {
 		msg.Thumb = telegramUploadOsFile{tmpThumbnailFile}
 	}
@@ -212,6 +213,7 @@ func handleAlbumUpload(album reddit.FetchResultAlbum, chatID int64) {
 			if err == nil {
 				f := tgbotapi.NewInputMediaVideo(telegramUploadOsFile{tmpFile})
 				f.Caption = media.Caption
+				f.SupportsStreaming = true
 				fileConfigs = append(fileConfigs, f)
 				link = media.Link
 				fileLinks = append(fileLinks, media.Link)

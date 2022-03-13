@@ -92,8 +92,9 @@ func fetchPostDetailsAndSend(text string, chatID int64, messageID int) {
 				return
 			case reddit.FetchResultMediaTypeVideo:
 				// If the video does have an audio, ask user if they want the audio
-				if _, hasAudio := data.HasAudio(); hasAudio {
-					handleVideoUpload(data.Medias[0].Link, data.Title, data.ThumbnailLink, chatID)
+				if _, hasAudio := data.HasAudio(); !hasAudio {
+					// Otherwise, just download the video
+					handleVideoUpload(data.Medias[0].Link, data.Title, data.ThumbnailLink, data.Duration, chatID)
 					return
 				}
 			}
@@ -116,6 +117,7 @@ func fetchPostDetailsAndSend(text string, chatID int64, messageID int) {
 			Title:         data.Title,
 			ThumbnailLink: data.ThumbnailLink,
 			Type:          data.Type,
+			Duration:      data.Duration,
 			AudioIndex:    audioIndex,
 		}, cache.DefaultExpiration)
 	case reddit.FetchResultAlbum:
@@ -172,9 +174,9 @@ func handleCallback(dataString string, chatID int64, msgId int) {
 		handlePhotoUpload(link, cachedData.Title, cachedData.ThumbnailLink, chatID, data.Mode == CallbackButtonDataModePhoto)
 	case reddit.FetchResultMediaTypeVideo:
 		if data.LinkKey == cachedData.AudioIndex {
-			handleAudioUpload(link, cachedData.Title, chatID)
+			handleAudioUpload(link, cachedData.Title, cachedData.Duration, chatID)
 		} else {
-			handleVideoUpload(link, cachedData.Title, cachedData.ThumbnailLink, chatID)
+			handleVideoUpload(link, cachedData.Title, cachedData.ThumbnailLink, cachedData.Duration, chatID)
 		}
 	}
 }

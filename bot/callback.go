@@ -47,6 +47,8 @@ type CallbackDataCached struct {
 	// The Links[AudioIndex] contains the audio of a video
 	// If there is no audio, this must be -1
 	AudioIndex int
+	// The duration of video
+	Duration int
 	// What media is this
 	Type reddit.FetchResultMediaType
 }

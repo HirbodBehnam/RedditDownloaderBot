@@ -167,11 +167,14 @@ func (o *Oauth) StartFetch(postUrl string) (fetchResult interface{}, fetchError 
 				Text:  html.UnescapeString(title + "\n" + u),
 			}, nil
 		case "hosted:video": // v.reddit
-			vid := root["media"].(map[string]interface{})["reddit_video"].(map[string]interface{})["fallback_url"].(string)
+			redditVideo := root["media"].(map[string]interface{})["reddit_video"].(map[string]interface{})
+			duration, _ := redditVideo["duration"].(float64) // Do not panic if duration does not exist. Just let the Telegram handle it
+			vid := redditVideo["fallback_url"].(string)
 			return FetchResultMedia{
 				Medias:        extractVideoQualities(vid),
 				ThumbnailLink: thumbnailUrl,
 				Title:         title,
+				Duration:      int(duration),
 				Type:          FetchResultMediaTypeVideo,
 			}, nil
 		case "rich:video": // files hosted other than reddit; This bot currently supports gfycat.com

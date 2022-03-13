@@ -58,7 +58,7 @@ func handleGifUpload(gifUrl, title, thumbnailUrl string, chatID int64) {
 }
 
 // handleVideoUpload downloads a video and then uploads it to Telegram
-func handleVideoUpload(vidUrl, title, thumbnailUrl string, chatID int64) {
+func handleVideoUpload(vidUrl, title, thumbnailUrl string, duration int, chatID int64) {
 	// Inform the user we are doing some shit
 	stopReportChannel := statusReporter(chatID, "upload_video")
 	defer close(stopReportChannel)
@@ -92,6 +92,7 @@ func handleVideoUpload(vidUrl, title, thumbnailUrl string, chatID int64) {
 	// Upload it
 	msg := tgbotapi.NewVideo(chatID, tgbotapi.FilePath(tmpFile.Name()))
 	msg.Caption = title
+	msg.Duration = duration
 	if tmpThumbnailFile != nil {
 		msg.Thumb = tgbotapi.FilePath(tmpThumbnailFile.Name())
 	}
@@ -251,7 +252,7 @@ func handleAlbumUpload(album reddit.FetchResultAlbum, chatID int64) {
 }
 
 // handleAudioUpload simply downloads then uploads an audio to Telegram
-func handleAudioUpload(audioURL, title string, chatID int64) {
+func handleAudioUpload(audioURL, title string, duration int, chatID int64) {
 	// Send status
 	stopReportChannel := statusReporter(chatID, "upload_voice")
 	defer close(stopReportChannel)
@@ -268,6 +269,7 @@ func handleAudioUpload(audioURL, title string, chatID int64) {
 	// Simply upload it to telegram
 	msg := tgbotapi.NewAudio(chatID, tgbotapi.FilePath(audioFile.Name()))
 	msg.Caption = title
+	msg.Duration = duration
 	_, err = bot.Send(msg)
 	if err != nil {
 		_, _ = bot.Send(tgbotapi.NewMessage(chatID, "Cannot upload audio; "+generateAudioURLMessage(audioURL)))

@@ -44,10 +44,10 @@ func handleGifUpload(gifUrl, title, thumbnailUrl string, chatID int64) {
 		}
 	}
 	// Upload it
-	msg := tgbotapi.NewAnimation(chatID, tgbotapi.FilePath(tmpFile.Name()))
+	msg := tgbotapi.NewAnimation(chatID, telegramUploadOsFile{tmpFile})
 	msg.Caption = title
 	if tmpThumbnailFile != nil {
-		msg.Thumb = tgbotapi.FilePath(tmpThumbnailFile.Name())
+		msg.Thumb = telegramUploadOsFile{tmpThumbnailFile}
 	}
 	_, err = bot.Send(msg)
 	if err != nil {
@@ -90,11 +90,11 @@ func handleVideoUpload(vidUrl, title, thumbnailUrl string, duration int, chatID 
 		}
 	}
 	// Upload it
-	msg := tgbotapi.NewVideo(chatID, tgbotapi.FilePath(tmpFile.Name()))
+	msg := tgbotapi.NewVideo(chatID, telegramUploadOsFile{tmpFile})
 	msg.Caption = title
 	msg.Duration = duration
 	if tmpThumbnailFile != nil {
-		msg.Thumb = tgbotapi.FilePath(tmpThumbnailFile.Name())
+		msg.Thumb = telegramUploadOsFile{tmpThumbnailFile}
 	}
 	_, err = bot.Send(msg)
 	if err != nil {
@@ -147,17 +147,17 @@ func handlePhotoUpload(photoUrl, title, thumbnailUrl string, chatID int64, asPho
 	// Upload
 	var msg tgbotapi.Chattable
 	if asPhoto {
-		photo := tgbotapi.NewPhoto(chatID, tgbotapi.FilePath(tmpFile.Name()))
+		photo := tgbotapi.NewPhoto(chatID, telegramUploadOsFile{tmpFile})
 		photo.Caption = title
 		if tmpThumbnailFile != nil {
-			photo.Thumb = tgbotapi.FilePath(tmpThumbnailFile.Name())
+			photo.Thumb = telegramUploadOsFile{tmpThumbnailFile}
 		}
 		msg = photo
 	} else {
-		photo := tgbotapi.NewDocument(chatID, tgbotapi.FilePath(tmpFile.Name()))
+		photo := tgbotapi.NewDocument(chatID, telegramUploadOsFile{tmpFile})
 		photo.Caption = title
 		if tmpThumbnailFile != nil {
-			photo.Thumb = tgbotapi.FilePath(tmpThumbnailFile.Name())
+			photo.Thumb = telegramUploadOsFile{tmpThumbnailFile}
 		}
 		msg = photo
 	}
@@ -192,7 +192,7 @@ func handleAlbumUpload(album reddit.FetchResultAlbum, chatID int64) {
 		case reddit.FetchResultMediaTypePhoto:
 			tmpFile, err = reddit.DownloadPhoto(media.Link)
 			if err == nil {
-				f := tgbotapi.NewInputMediaPhoto(tgbotapi.FilePath(tmpFile.Name()))
+				f := tgbotapi.NewInputMediaPhoto(telegramUploadOsFile{tmpFile})
 				f.Caption = media.Caption
 				fileConfigs = append(fileConfigs, f)
 				link = media.Link
@@ -201,7 +201,7 @@ func handleAlbumUpload(album reddit.FetchResultAlbum, chatID int64) {
 		case reddit.FetchResultMediaTypeGif:
 			tmpFile, err = reddit.DownloadGif(media.Link)
 			if err == nil {
-				f := tgbotapi.NewInputMediaVideo(tgbotapi.FilePath(tmpFile.Name())) // not sure why...
+				f := tgbotapi.NewInputMediaVideo(telegramUploadOsFile{tmpFile}) // not sure why...
 				f.Caption = media.Caption
 				fileConfigs = append(fileConfigs, f)
 				link = media.Link
@@ -210,7 +210,7 @@ func handleAlbumUpload(album reddit.FetchResultAlbum, chatID int64) {
 		case reddit.FetchResultMediaTypeVideo:
 			_, tmpFile, err = reddit.DownloadVideo(media.Link)
 			if err == nil {
-				f := tgbotapi.NewInputMediaVideo(tgbotapi.FilePath(tmpFile.Name()))
+				f := tgbotapi.NewInputMediaVideo(telegramUploadOsFile{tmpFile})
 				f.Caption = media.Caption
 				fileConfigs = append(fileConfigs, f)
 				link = media.Link
@@ -267,7 +267,7 @@ func handleAudioUpload(audioURL, title string, duration int, chatID int64) {
 		_ = os.Remove(audioFile.Name())
 	}()
 	// Simply upload it to telegram
-	msg := tgbotapi.NewAudio(chatID, tgbotapi.FilePath(audioFile.Name()))
+	msg := tgbotapi.NewAudio(chatID, telegramUploadOsFile{audioFile})
 	msg.Caption = title
 	msg.Duration = duration
 	_, err = bot.Send(msg)
@@ -289,11 +289,12 @@ func statusReporter(chatID int64, action string) chan struct{} {
 // statusReporterGoroutine must be called from another goroutine to report the status of upload
 func statusReporterGoroutine(chatID int64, action string, done <-chan struct{}) {
 	ticker := time.NewTicker(time.Second * 5) // we have to send it each 5 seconds
-	_, _ = bot.Send(tgbotapi.NewChatAction(chatID, action))
+	actionObject := tgbotapi.NewChatAction(chatID, action)
+	_, _ = bot.Send(actionObject)
 	for {
 		select {
 		case <-ticker.C:
-			_, _ = bot.Send(tgbotapi.NewChatAction(chatID, action))
+			_, _ = bot.Send(actionObject)
 		case <-done:
 			ticker.Stop()
 			return

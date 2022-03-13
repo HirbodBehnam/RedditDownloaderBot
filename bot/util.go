@@ -3,6 +3,8 @@ package bot
 import (
 	"github.com/HirbodBehnam/RedditDownloaderBot/reddit"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"io"
+	"os"
 )
 
 // createPhotoInlineKeyboard creates inline keyboards to get the quality info of a photo
@@ -28,6 +30,7 @@ func createPhotoInlineKeyboard(id string, medias reddit.FetchResultMedia) tgbota
 	return tgbotapi.InlineKeyboardMarkup{InlineKeyboard: rows}
 }
 
+// createGifInlineKeyboard creates an inline keyboard for downloading gifs based on given reddit.FetchResultMedia
 func createGifInlineKeyboard(id string, medias reddit.FetchResultMedia) tgbotapi.InlineKeyboardMarkup {
 	rows := make([][]tgbotapi.InlineKeyboardButton, len(medias.Medias))
 	for i, media := range medias.Medias {
@@ -43,6 +46,7 @@ func createGifInlineKeyboard(id string, medias reddit.FetchResultMedia) tgbotapi
 	return tgbotapi.InlineKeyboardMarkup{InlineKeyboard: rows}
 }
 
+// createVideoInlineKeyboard creates an inline keyboard for downloading gifs based on given reddit.FetchResultMedia
 func createVideoInlineKeyboard(id string, medias reddit.FetchResultMedia) tgbotapi.InlineKeyboardMarkup {
 	rows := make([][]tgbotapi.InlineKeyboardButton, len(medias.Medias))
 	for i, media := range medias.Medias {
@@ -56,4 +60,22 @@ func createVideoInlineKeyboard(id string, medias reddit.FetchResultMedia) tgbota
 		rows[i] = []tgbotapi.InlineKeyboardButton{tgbotapi.NewInlineKeyboardButtonData(media.Quality, info.String())}
 	}
 	return tgbotapi.InlineKeyboardMarkup{InlineKeyboard: rows}
+}
+
+// telegramUploadOsFile is wrapper for os.File in order to make it uploadable in Telegram
+type telegramUploadOsFile struct {
+	*os.File
+}
+
+func (f telegramUploadOsFile) NeedsUpload() bool {
+	return true
+}
+
+func (f telegramUploadOsFile) UploadData() (string, io.Reader, error) {
+	// Note: I can use io.NopCloser in order to make the bot not close the file
+	return f.Name(), f, nil
+}
+
+func (f telegramUploadOsFile) SendData() string {
+	panic("telegramUploadOsFile must be uploaded")
 }

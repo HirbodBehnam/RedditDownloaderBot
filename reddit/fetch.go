@@ -280,28 +280,29 @@ func getPostID(postUrl string) (postID string, isComment bool, err *FetchError) 
 	lines := strings.Split(postUrl, "\n")
 	for _, line := range lines {
 		u, _ = url.Parse(line)
-		if u != nil {
-			if u.Host == "redd.it" {
-				if len(u.Path) > 1 {
-					p := u.Path[1:]
-					if strings.Contains(p, "/") {
-						continue
-					}
-					return p, false, nil
-				}
-				continue
-			}
-			if u.Host == "v.redd.it" {
-				followedUrl, err := util.FollowRedirect(line)
-				if err != nil {
+		if u == nil {
+			continue
+		}
+		if u.Host == "redd.it" {
+			if len(u.Path) > 1 {
+				p := u.Path[1:]
+				if strings.Contains(p, "/") {
 					continue
 				}
-				u, _ = url.Parse(followedUrl)
+				return p, false, nil
 			}
-			if u.Host == "www.reddit.com" || u.Host == "reddit.com" || u.Host == "old.reddit.com" {
-				postUrl = line
-				break
+			continue
+		}
+		if u.Host == "v.redd.it" {
+			followedUrl, err := util.FollowRedirect(line)
+			if err != nil {
+				continue
 			}
+			u, _ = url.Parse(followedUrl)
+		}
+		if u.Host == "www.reddit.com" || u.Host == "reddit.com" || u.Host == "old.reddit.com" {
+			postUrl = line
+			break
 		}
 		u = nil // this is for last loop. If u is nil after that final loop, it means that there is no reddit url in text
 	}

@@ -2,13 +2,13 @@ package bot
 
 import (
 	"github.com/HirbodBehnam/RedditDownloaderBot/reddit"
+	"github.com/HirbodBehnam/RedditDownloaderBot/util"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/patrickmn/go-cache"
 	"time"
 )
 
 // mediaCache contains the requests of each user. Will reset in 10 minutes
-var mediaCache *cache.Cache
+var mediaCache *util.TimedCache[string, CallbackDataCached]
 var bot *tgbotapi.BotAPI
 var RedditOauth *reddit.Oauth
 
@@ -23,5 +23,5 @@ const NoThumbnailNeededSize = 10 * 1000 * 1000
 const Markdown = "Markdown"
 
 func init() {
-	mediaCache = cache.New(5*time.Minute, 10*time.Minute)
+	mediaCache = util.NewTimedCache[string, CallbackDataCached](5*time.Minute, 10*time.Minute)
 }

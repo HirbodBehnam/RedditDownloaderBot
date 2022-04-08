@@ -279,19 +279,23 @@ func getPostID(postUrl string) (postID string, isComment bool, err *FetchError) 
 	// Check all lines for links. In new reddit update, sharing via Telegram adds the post title at its first
 	lines := strings.Split(postUrl, "\n")
 	for _, line := range lines {
+		if !strings.HasPrefix(line, "http://") && !strings.HasPrefix(line, "https://") {
+			line = "https://" + line
+		}
 		u, _ = url.Parse(line)
 		if u == nil {
 			continue
 		}
 		if u.Host == "redd.it" {
-			if len(u.Path) > 1 {
-				p := u.Path[1:]
-				if strings.Contains(p, "/") {
-					continue
-				}
-				return p, false, nil
+			if len(u.Path) <= 1 {
+				continue
 			}
-			continue
+			p := u.Path[1:] // remove the first /
+			if strings.Contains(p, "/") {
+				continue
+			}
+			// redd.it links are never comments
+			return p, false, nil
 		}
 		if u.Host == "v.redd.it" {
 			followedUrl, err := util.FollowRedirect(line)

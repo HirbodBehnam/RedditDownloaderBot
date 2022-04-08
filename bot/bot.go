@@ -7,7 +7,6 @@ import (
 	"github.com/HirbodBehnam/RedditDownloaderBot/util"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/google/uuid"
-	"github.com/patrickmn/go-cache"
 	"log"
 )
 
@@ -119,7 +118,7 @@ func fetchPostDetailsAndSend(text string, chatID int64, messageID int) {
 			Type:          data.Type,
 			Duration:      data.Duration,
 			AudioIndex:    audioIndex,
-		}, cache.DefaultExpiration)
+		})
 	case reddit.FetchResultAlbum:
 		handleAlbumUpload(data, chatID)
 		return
@@ -153,14 +152,12 @@ func handleCallback(dataString string, chatID int64, msgId int) {
 		return
 	}
 	// Get the cache from database
-	cachedDataInterface, exists := mediaCache.Get(data.ID)
+	cachedData, exists := mediaCache.GetAndDelete(data.ID)
 	if !exists {
 		_, _ = bot.Send(tgbotapi.NewMessage(chatID, "Please resend the link to bot"))
 		return
 	}
-	mediaCache.Delete(data.ID) // delete it right away
 	// Check the link
-	cachedData := cachedDataInterface.(CallbackDataCached)
 	link, exists := cachedData.Links[data.LinkKey]
 	if !exists {
 		_, _ = bot.Send(tgbotapi.NewMessage(chatID, "Please resend the link to bot"))

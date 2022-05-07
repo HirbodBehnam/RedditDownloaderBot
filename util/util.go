@@ -25,7 +25,7 @@ func FollowRedirect(u string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	_ = resp.Body.Close()
+	resp.Body.Close()
 	return resp.Request.URL.String(), nil
 }
 

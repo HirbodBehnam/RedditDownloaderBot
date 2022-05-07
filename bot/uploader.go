@@ -19,17 +19,17 @@ func handleGifUpload(gifUrl, title, thumbnailUrl string, chatID int64) {
 	tmpFile, err := reddit.DownloadGif(gifUrl)
 	if err != nil {
 		log.Println("Cannot download file", gifUrl, ":", err)
-		_, _ = bot.Send(tgbotapi.NewMessage(chatID, "Cannot download file.\nHere is the link to file: "+gifUrl))
+		bot.Send(tgbotapi.NewMessage(chatID, "Cannot download file.\nHere is the link to file: "+gifUrl))
 		return
 	}
 	defer func() { // Cleanup
-		_ = tmpFile.Close()
-		_ = os.Remove(tmpFile.Name())
+		tmpFile.Close()
+		os.Remove(tmpFile.Name())
 	}()
 	// Upload the gif
 	// Check file size
 	if !util.CheckFileSize(tmpFile.Name(), RegularMaxUploadSize) {
-		_, _ = bot.Send(tgbotapi.NewMessage(chatID, "This file is too big to upload it on telegram!\nHere is the link to file: "+gifUrl))
+		bot.Send(tgbotapi.NewMessage(chatID, "This file is too big to upload it on telegram!\nHere is the link to file: "+gifUrl))
 		return
 	}
 	// Check thumbnail
@@ -38,8 +38,8 @@ func handleGifUpload(gifUrl, title, thumbnailUrl string, chatID int64) {
 		tmpThumbnailFile, err = reddit.DownloadThumbnail(thumbnailUrl)
 		if err == nil {
 			defer func() {
-				_ = tmpThumbnailFile.Close()
-				_ = os.Remove(tmpThumbnailFile.Name())
+				tmpThumbnailFile.Close()
+				os.Remove(tmpThumbnailFile.Name())
 			}()
 		}
 	}
@@ -51,7 +51,7 @@ func handleGifUpload(gifUrl, title, thumbnailUrl string, chatID int64) {
 	}
 	_, err = bot.Send(msg)
 	if err != nil {
-		_, _ = bot.Send(tgbotapi.NewMessage(chatID, "Cannot upload file.\nHere is the link to file: "+gifUrl))
+		bot.Send(tgbotapi.NewMessage(chatID, "Cannot upload file.\nHere is the link to file: "+gifUrl))
 		log.Println("Cannot upload file:", err)
 		return
 	}
@@ -66,16 +66,16 @@ func handleVideoUpload(vidUrl, title, thumbnailUrl string, duration int, chatID 
 	audioUrl, tmpFile, err := reddit.DownloadVideo(vidUrl)
 	if err != nil {
 		log.Println("Cannot download file", vidUrl, ":", err)
-		_, _ = bot.Send(tgbotapi.NewMessage(chatID, "Can't download file.\n"+generateVideoUrlsMessage(vidUrl, audioUrl)))
+		bot.Send(tgbotapi.NewMessage(chatID, "Can't download file.\n"+generateVideoUrlsMessage(vidUrl, audioUrl)))
 		return
 	}
 	defer func() { // Cleanup
-		_ = tmpFile.Close()
-		_ = os.Remove(tmpFile.Name())
+		tmpFile.Close()
+		os.Remove(tmpFile.Name())
 	}()
 	// Check file size
 	if !util.CheckFileSize(tmpFile.Name(), RegularMaxUploadSize) {
-		_, _ = bot.Send(tgbotapi.NewMessage(chatID, "This file is too big to upload it on telegram!\n"+generateVideoUrlsMessage(vidUrl, audioUrl)))
+		bot.Send(tgbotapi.NewMessage(chatID, "This file is too big to upload it on telegram!\n"+generateVideoUrlsMessage(vidUrl, audioUrl)))
 		return
 	}
 	// Check thumbnail
@@ -84,8 +84,8 @@ func handleVideoUpload(vidUrl, title, thumbnailUrl string, duration int, chatID 
 		tmpThumbnailFile, err = reddit.DownloadThumbnail(thumbnailUrl)
 		if err == nil {
 			defer func() {
-				_ = tmpThumbnailFile.Close()
-				_ = os.Remove(tmpThumbnailFile.Name())
+				tmpThumbnailFile.Close()
+				os.Remove(tmpThumbnailFile.Name())
 			}()
 		}
 	}
@@ -100,7 +100,7 @@ func handleVideoUpload(vidUrl, title, thumbnailUrl string, duration int, chatID 
 	_, err = bot.Send(msg)
 	if err != nil {
 		log.Println("Cannot upload file:", err)
-		_, _ = bot.Send(tgbotapi.NewMessage(chatID, "Cannot upload file.\n"+generateVideoUrlsMessage(vidUrl, audioUrl)))
+		bot.Send(tgbotapi.NewMessage(chatID, "Cannot upload file.\n"+generateVideoUrlsMessage(vidUrl, audioUrl)))
 		return
 	}
 }
@@ -119,19 +119,19 @@ func handlePhotoUpload(photoUrl, title, thumbnailUrl string, chatID int64, asPho
 	tmpFile, err := reddit.DownloadPhoto(photoUrl)
 	if err != nil {
 		log.Println("Cannot download file", photoUrl, ":", err)
-		_, _ = bot.Send(tgbotapi.NewMessage(chatID, "Cannot download file.\nHere is the link to file: "+photoUrl))
+		bot.Send(tgbotapi.NewMessage(chatID, "Cannot download file.\nHere is the link to file: "+photoUrl))
 		return
 	}
 	defer func() { // Cleanup
-		_ = tmpFile.Close()
-		_ = os.Remove(tmpFile.Name())
+		tmpFile.Close()
+		os.Remove(tmpFile.Name())
 	}()
 	// Check filesize
 	if asPhoto {
 		asPhoto = util.CheckFileSize(tmpFile.Name(), PhotoMaxUploadSize) // send photo as file if it is larger than 10MB
 	}
 	if !util.CheckFileSize(tmpFile.Name(), RegularMaxUploadSize) {
-		_, _ = bot.Send(tgbotapi.NewMessage(chatID, "This file is too big to upload it on telegram!\nHere is the link to image: "+photoUrl))
+		bot.Send(tgbotapi.NewMessage(chatID, "This file is too big to upload it on telegram!\nHere is the link to image: "+photoUrl))
 		return
 	}
 	// Download thumbnail
@@ -140,8 +140,8 @@ func handlePhotoUpload(photoUrl, title, thumbnailUrl string, chatID int64, asPho
 		tmpThumbnailFile, err = reddit.DownloadThumbnail(thumbnailUrl)
 		if err == nil {
 			defer func() {
-				_ = tmpThumbnailFile.Close()
-				_ = os.Remove(tmpThumbnailFile.Name())
+				tmpThumbnailFile.Close()
+				os.Remove(tmpThumbnailFile.Name())
 			}()
 		}
 	}
@@ -164,7 +164,7 @@ func handlePhotoUpload(photoUrl, title, thumbnailUrl string, chatID int64, asPho
 	}
 	_, err = bot.Send(msg)
 	if err != nil {
-		_, _ = bot.Send(tgbotapi.NewMessage(chatID, "Cannot upload file.\nHere is the link to image: "+photoUrl))
+		bot.Send(tgbotapi.NewMessage(chatID, "Cannot upload file.\nHere is the link to image: "+photoUrl))
 		log.Println("Cannot upload file:", err)
 		return
 	}
@@ -180,8 +180,8 @@ func handleAlbumUpload(album reddit.FetchResultAlbum, chatID int64) {
 	filePaths := make([]*os.File, 0, len(album.Album))
 	defer func() { // cleanup
 		for _, f := range filePaths {
-			_ = f.Close()
-			_ = os.Remove(f.Name())
+			f.Close()
+			os.Remove(f.Name())
 		}
 	}()
 	fileConfigs := make([]interface{}, 0, len(album.Album))
@@ -221,7 +221,7 @@ func handleAlbumUpload(album reddit.FetchResultAlbum, chatID int64) {
 		}
 		if err != nil {
 			log.Println("cannot download media of gallery:", err)
-			_, _ = bot.Send(tgbotapi.NewMessage(chatID, "Cannot download gallery media; The link was: "+link))
+			bot.Send(tgbotapi.NewMessage(chatID, "Cannot download gallery media; The link was: "+link))
 			continue
 		}
 		filePaths = append(filePaths, tmpFile)
@@ -232,7 +232,7 @@ func handleAlbumUpload(album reddit.FetchResultAlbum, chatID int64) {
 		_, err = bot.SendMediaGroup(tgbotapi.NewMediaGroup(chatID, fileConfigs[i*10:(i+1)*10]))
 		if err != nil {
 			log.Println("Cannot upload gallery:", err)
-			_, _ = bot.Send(tgbotapi.NewMessage(chatID, generateGalleryFailedMessage(fileLinks[i*10:(i+1)*10])))
+			bot.Send(tgbotapi.NewMessage(chatID, generateGalleryFailedMessage(fileLinks[i*10:(i+1)*10])))
 		}
 	}
 	err = nil // needed for last error check
@@ -249,7 +249,7 @@ func handleAlbumUpload(album reddit.FetchResultAlbum, chatID int64) {
 	}
 	if err != nil {
 		log.Println("cannot upload gallery:", err)
-		_, _ = bot.Send(tgbotapi.NewMessage(chatID, generateGalleryFailedMessage(fileLinks[i*10:])))
+		bot.Send(tgbotapi.NewMessage(chatID, generateGalleryFailedMessage(fileLinks[i*10:])))
 	}
 }
 
@@ -261,12 +261,12 @@ func handleAudioUpload(audioURL, title string, duration int, chatID int64) {
 	// Create a temp file
 	audioFile, err := reddit.DownloadAudio(audioURL)
 	if err != nil {
-		_, _ = bot.Send(tgbotapi.NewMessage(chatID, "Cannot download audio; "+generateAudioURLMessage(audioURL)))
+		bot.Send(tgbotapi.NewMessage(chatID, "Cannot download audio; "+generateAudioURLMessage(audioURL)))
 		return
 	}
 	defer func() {
-		_ = audioFile.Close()
-		_ = os.Remove(audioFile.Name())
+		audioFile.Close()
+		os.Remove(audioFile.Name())
 	}()
 	// Simply upload it to telegram
 	msg := tgbotapi.NewAudio(chatID, telegramUploadOsFile{audioFile})
@@ -274,7 +274,7 @@ func handleAudioUpload(audioURL, title string, duration int, chatID int64) {
 	msg.Duration = duration
 	_, err = bot.Send(msg)
 	if err != nil {
-		_, _ = bot.Send(tgbotapi.NewMessage(chatID, "Cannot upload audio; "+generateAudioURLMessage(audioURL)))
+		bot.Send(tgbotapi.NewMessage(chatID, "Cannot upload audio; "+generateAudioURLMessage(audioURL)))
 		return
 	}
 }
@@ -292,11 +292,11 @@ func statusReporter(chatID int64, action string) chan struct{} {
 func statusReporterGoroutine(chatID int64, action string, done <-chan struct{}) {
 	ticker := time.NewTicker(time.Second * 5) // we have to send it each 5 seconds
 	actionObject := tgbotapi.NewChatAction(chatID, action)
-	_, _ = bot.Send(actionObject)
+	bot.Send(actionObject)
 	for {
 		select {
 		case <-ticker.C:
-			_, _ = bot.Send(actionObject)
+			bot.Send(actionObject)
 		case <-done:
 			ticker.Stop()
 			return

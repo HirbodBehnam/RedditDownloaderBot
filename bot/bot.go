@@ -35,20 +35,20 @@ func RunBot(token string, allowedUsers AllowedUsers) {
 		}
 		// Only text messages are allowed
 		if update.Message.Text == "" {
-			_, _ = bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Please send the reddit post link to bot"))
+			bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Please send the reddit post link to bot"))
 			continue
 		}
 		// Check if the message is command
 		if update.Message.IsCommand() {
 			switch update.Message.Command() {
 			case "start":
-				_, _ = bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Hello and welcome!\nJust send me the link of the post to download it for you."))
+				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Hello and welcome!\nJust send me the link of the post to download it for you."))
 			case "about":
-				_, _ = bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Reddit Downloader Bot v"+config.Version+"\nBy Hirbod Behnam\nSource: https://github.com/HirbodBehnam/RedditDownloaderBot"))
+				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Reddit Downloader Bot v"+config.Version+"\nBy Hirbod Behnam\nSource: https://github.com/HirbodBehnam/RedditDownloaderBot"))
 			case "help":
-				_, _ = bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Just send me the link of the reddit post or comment. If it's text, I will send the text of the post. If it's a photo or video, I will send the it with the title as caption."))
+				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Just send me the link of the reddit post or comment. If it's text, I will send the text of the post. If it's a photo or video, I will send the it with the title as caption."))
 			default:
-				_, _ = bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Sorry this command is not recognized; Try /help"))
+				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Sorry this command is not recognized; Try /help"))
 			}
 			continue
 		}
@@ -62,7 +62,7 @@ func fetchPostDetailsAndSend(text string, chatID int64, messageID int) {
 	if fetchErr != nil {
 		msg := tgbotapi.NewMessage(chatID, fetchErr.BotError)
 		msg.ReplyToMessageID = messageID
-		_, _ = bot.Send(msg)
+		bot.Send(msg)
 		if fetchErr.NormalError != "" {
 			log.Println("cannot get post ", text, ":", fetchErr.NormalError)
 		}
@@ -129,7 +129,7 @@ func fetchPostDetailsAndSend(text string, chatID int64, messageID int) {
 	_, err := bot.Send(msg)
 	if err != nil {
 		msg.ParseMode = ""
-		_, _ = bot.Send(msg)
+		bot.Send(msg)
 	}
 }
 
@@ -138,29 +138,29 @@ func handleCallback(dataString string, chatID int64, msgId int) {
 	// Don't crash!
 	defer func() {
 		if r := recover(); r != nil {
-			_, _ = bot.Send(tgbotapi.NewMessage(chatID, "Cannot get data. (panic)"))
+			bot.Send(tgbotapi.NewMessage(chatID, "Cannot get data. (panic)"))
 			log.Println("recovering from panic:", r)
 		}
 	}()
 	// Delete the message
-	_, _ = bot.Send(tgbotapi.NewDeleteMessage(chatID, msgId))
+	bot.Send(tgbotapi.NewDeleteMessage(chatID, msgId))
 	// Parse the data
 	var data CallbackButtonData
 	err := json.Unmarshal(util.StringToByte(dataString), &data)
 	if err != nil {
-		_, _ = bot.Send(tgbotapi.NewMessage(chatID, "Broken callback data"))
+		bot.Send(tgbotapi.NewMessage(chatID, "Broken callback data"))
 		return
 	}
 	// Get the cache from database
 	cachedData, exists := mediaCache.GetAndDelete(data.ID)
 	if !exists {
-		_, _ = bot.Send(tgbotapi.NewMessage(chatID, "Please resend the link to bot"))
+		bot.Send(tgbotapi.NewMessage(chatID, "Please resend the link to bot"))
 		return
 	}
 	// Check the link
 	link, exists := cachedData.Links[data.LinkKey]
 	if !exists {
-		_, _ = bot.Send(tgbotapi.NewMessage(chatID, "Please resend the link to bot"))
+		bot.Send(tgbotapi.NewMessage(chatID, "Please resend the link to bot"))
 		return
 	}
 	// Check the media type

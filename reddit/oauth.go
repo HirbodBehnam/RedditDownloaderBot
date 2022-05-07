@@ -1,9 +1,11 @@
 package reddit
 
 import (
+	"bytes"
 	"encoding/json"
-	"errors"
 	"github.com/HirbodBehnam/RedditDownloaderBot/config"
+	"github.com/go-faster/errors"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -34,7 +36,7 @@ type Oauth struct {
 	// The authorization header we should send to each request
 	authorizationHeader string
 	// When we should make the next request in unix epoch
-	rateLimit int64
+	rateLimitFreedom int64
 }
 
 // tokenRequestResponse is the result of https://www.reddit.com/api/v1/access_token endpoint
@@ -51,7 +53,7 @@ func NewRedditOauth(clientId, clientSecret string) (*Oauth, error) {
 	}
 	nextRefresh, err := redditOauth.createToken()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "cannot create initial token")
 	}
 	go redditOauth.tokenRefresh(nextRefresh)
 	return redditOauth, nil
@@ -62,7 +64,7 @@ func (o *Oauth) tokenRefresh(nextRefresh time.Duration) {
 	for {
 		time.Sleep(nextRefresh - time.Minute)
 		// Check rate limit
-		freedom := atomic.LoadInt64(&o.rateLimit)
+		freedom := atomic.LoadInt64(&o.rateLimitFreedom)
 		if time.Now().Unix() < freedom {
 			time.Sleep(time.Now().Sub(time.Unix(freedom, 0)))
 			nextRefresh = 0 // do not wait in line "time.Sleep(nextRefresh - time.Minute)"
@@ -89,17 +91,20 @@ func (o *Oauth) createToken() (time.Duration, error) {
 	// Send the request
 	resp, err := config.GlobalHttpClient.Do(req)
 	if err != nil {
-		return 0, err
+		return 0, errors.Wrap(err, "cannot do the request")
 	}
 	// Parse the response
+	if resp.StatusCode != http.StatusOK {
+		buffer := new(bytes.Buffer)
+		io.CopyN(buffer, resp.Body, 100) // 100 chars is ok right?
+		resp.Body.Close()
+		return 0, errors.Wrapf(err, "status code is not 200. It is %s. Body starts with: %s", resp.Status, buffer.String())
+	}
 	var body tokenRequestResponse
 	err = json.NewDecoder(resp.Body).Decode(&body)
-	_ = resp.Body.Close()
+	resp.Body.Close()
 	if err != nil {
-		return 0, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return 0, errors.New("status code is not 200. It is " + resp.Status)
+		return 0, errors.Wrap(err, "cannot parse response")
 	}
 	// Set the data
 	o.authorizationHeader = "bearer: " + body.AccessToken
@@ -118,29 +123,31 @@ func (o *Oauth) GetPost(id string) (map[string]interface{}, error) {
 
 func (o *Oauth) doGetJsonRequest(Url string) (map[string]interface{}, error) {
 	// Check rate limit
-	if time.Now().Unix() < atomic.LoadInt64(&o.rateLimit) {
+	if time.Now().Unix() < atomic.LoadInt64(&o.rateLimitFreedom) {
 		return nil, RateLimitError
 	}
 	// Build the request
 	req, err := http.NewRequest("GET", Url, nil)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "cannot create request")
 	}
 	req.Header.Set("User-Agent", userAgent)
 	req.Header.Set("Authorization", o.authorizationHeader)
 	// Do the request
 	resp, err := config.GlobalHttpClient.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "cannot do the request")
 	}
 	// Check the rate limit
 	if rateLimit, err := strconv.Atoi(resp.Header.Get("X-Ratelimit-Remaining")); err == nil && rateLimit == 0 {
 		freedom, _ := strconv.Atoi(resp.Header.Get("X-Ratelimit-Reset"))
-		atomic.StoreInt64(&o.rateLimit, time.Now().Unix()+int64(freedom))
+		atomic.StoreInt64(&o.rateLimitFreedom, time.Now().Unix()+int64(freedom))
+		resp.Body.Close()
+		return nil, RateLimitError
 	}
 	// Read the body
 	var responseBody map[string]interface{}
 	err = json.NewDecoder(resp.Body).Decode(&responseBody)
-	_ = resp.Body.Close()
+	resp.Body.Close()
 	return responseBody, err
 }

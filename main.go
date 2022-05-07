@@ -5,6 +5,7 @@ import (
 	"github.com/HirbodBehnam/RedditDownloaderBot/config"
 	"github.com/HirbodBehnam/RedditDownloaderBot/reddit"
 	"github.com/HirbodBehnam/RedditDownloaderBot/util"
+	"github.com/go-faster/errors"
 	"log"
 	"os"
 	"strconv"
@@ -12,6 +13,7 @@ import (
 )
 
 func main() {
+	errors.DisableTrace()
 	var err error
 	log.Println("Reddit Downloader Bot v" + config.Version)
 	if !util.DoesFfmpegExists() {
@@ -27,7 +29,7 @@ func main() {
 	// Start the reddit oauth
 	bot.RedditOauth, err = reddit.NewRedditOauth(clientID, clientSecret)
 	if err != nil {
-		log.Fatal("Cannot initialize the reddit oauth:", err.Error())
+		log.Fatalln("Cannot initialize the reddit oauth:", err.Error())
 	}
 	bot.RunBot(botToken, getAllowedUsers())
 }

@@ -6,7 +6,6 @@ import (
 	"github.com/HirbodBehnam/RedditDownloaderBot/util"
 	"github.com/PuerkitoBio/goquery"
 	"html"
-	"io"
 	"log"
 	"net/url"
 	"path"
@@ -216,9 +215,7 @@ func (o *Oauth) StartFetch(postUrl string) (fetchResult interface{}, fetchError 
 							BotError:    "Cannot get the source code of " + root["url"].(string),
 						}
 					}
-					defer func(body io.ReadCloser) {
-						_ = body.Close()
-					}(source.Body)
+					defer source.Body.Close()
 					// Get the meta tag og:video
 					doc, err := goquery.NewDocumentFromReader(source.Body)
 					if err != nil {

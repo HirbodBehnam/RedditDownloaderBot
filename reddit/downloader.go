@@ -2,9 +2,9 @@ package reddit
 
 import (
 	"bytes"
-	"errors"
 	"github.com/HirbodBehnam/RedditDownloaderBot/config"
 	"github.com/HirbodBehnam/RedditDownloaderBot/util"
+	"github.com/go-faster/errors"
 	"io"
 	"io/ioutil"
 	"log"
@@ -36,13 +36,13 @@ func DownloadPhoto(link string) (*os.File, error) {
 	// Generate a temp file
 	tmpFile, err := ioutil.TempFile("", "*."+fileName)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "cannot create temp file")
 	}
 	// Download the file
 	err = downloadToFile(link, tmpFile)
 	if err != nil {
-		_ = os.Remove(tmpFile.Name())
-		return nil, err
+		os.Remove(tmpFile.Name())
+		return nil, errors.Wrap(err, "cannot download file")
 	}
 	// We are good
 	return tmpFile, nil
@@ -54,29 +54,32 @@ func DownloadVideo(vidUrl string) (audioUrl string, videoFile *os.File, err erro
 	// Download the video in a temp file
 	videoFile, err = ioutil.TempFile("", "*.mp4")
 	if err != nil {
-		return "", nil, err
+		err = errors.Wrap(err, "cannot create a temp file for video")
+		return
 	}
 	defer func() {
 		// Only delete the video file if error is not nil
 		if err != nil {
-			_ = videoFile.Close()
-			_ = os.Remove(videoFile.Name())
+			videoFile.Close()
+			os.Remove(videoFile.Name())
 		}
 	}()
 	err = downloadToFile(vidUrl, videoFile)
 	if err != nil {
+		err = errors.Wrap(err, "cannot download file")
 		return
 	}
 	// Otherwise, search for an audio file
 	audioUrl, hasAudio := HasAudio(vidUrl)
 	audFile, err := ioutil.TempFile("", "*.mp4")
 	if err != nil {
+		err = errors.Wrap(err, "cannot create a temp file for audio")
 		return
 	}
 	// We don't need audio file anyway
 	defer func() {
-		_ = audFile.Close()
-		_ = os.Remove(audFile.Name())
+		audFile.Close()
+		os.Remove(audFile.Name())
 	}()
 	if downloadToFile(audioUrl, audFile) != nil {
 		audioUrl = ""
@@ -92,6 +95,7 @@ func DownloadVideo(vidUrl string) (audioUrl string, videoFile *os.File, err erro
 		// Convert
 		finalFile, err = ioutil.TempFile("", "*.mp4")
 		if err != nil {
+			err = errors.Wrap(err, "cannot create a temp file for final video")
 			return
 		}
 		cmd := exec.Command("ffmpeg",
@@ -103,18 +107,17 @@ func DownloadVideo(vidUrl string) (audioUrl string, videoFile *os.File, err erro
 		cmd.Stderr = &stderr
 		err = cmd.Run()
 		if err != nil {
-			log.Println("Cannot convert video:", err)
-			log.Println(stderr.String())
-			_ = finalFile.Close()
-			_ = os.Remove(finalFile.Name())
+			log.Println("Cannot convert video:", err, "\n", stderr.String())
+			finalFile.Close()
+			os.Remove(finalFile.Name())
 			// We don't return error here
 			err = nil
 			return audioUrl, videoFile, nil
 		}
 		// If we have reached here, it means that the conversion was fine
 		// So we swap the final file with video file and delete the video file
-		_ = videoFile.Close()
-		_ = os.Remove(videoFile.Name())
+		videoFile.Close()
+		os.Remove(videoFile.Name())
 		videoFile = finalFile
 	}
 	// No we can return the video file
@@ -130,8 +133,8 @@ func DownloadGif(link string) (*os.File, error) {
 	}
 	err = downloadToFile(link, tmpFile)
 	if err != nil {
-		_ = tmpFile.Close()
-		_ = os.Remove(tmpFile.Name())
+		tmpFile.Close()
+		os.Remove(tmpFile.Name())
 		return nil, err
 	}
 	return tmpFile, nil
@@ -147,8 +150,8 @@ func DownloadThumbnail(link string) (*os.File, error) {
 	// Download to file
 	err = downloadToFile(link, tmpFile)
 	if err != nil {
-		_ = tmpFile.Close()
-		_ = os.Remove(tmpFile.Name())
+		tmpFile.Close()
+		os.Remove(tmpFile.Name())
 		return nil, err
 	}
 	// We are good
@@ -165,8 +168,8 @@ func DownloadAudio(audioUrl string) (*os.File, error) {
 	// Download to file
 	err = downloadToFile(audioUrl, tmpFile)
 	if err != nil {
-		_ = tmpFile.Close()
-		_ = os.Remove(tmpFile.Name())
+		tmpFile.Close()
+		os.Remove(tmpFile.Name())
 		return nil, err
 	}
 	// We are good
@@ -181,20 +184,17 @@ func downloadToFile(link string, f *os.File) error {
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusForbidden {
-		_ = resp.Body.Close()
 		return errors.New("forbidden")
 	}
 	if resp.ContentLength == -1 {
-		_ = resp.Body.Close()
 		return errors.New("unknown length")
 	}
 	if resp.ContentLength > maxDownloadSize {
-		_ = resp.Body.Close()
 		return FileTooBigError
 	}
 	_, err = io.Copy(f, resp.Body)
-	_ = resp.Body.Close()
 	return err
 }
 

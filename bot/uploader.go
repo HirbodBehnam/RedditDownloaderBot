@@ -171,7 +171,7 @@ func handlePhotoUpload(photoUrl, title, thumbnailUrl string, chatID int64, asPho
 }
 
 // handleAlbumUpload uploads an album to Telegram
-func handleAlbumUpload(album reddit.FetchResultAlbum, chatID int64) {
+func handleAlbumUpload(album reddit.FetchResultAlbum, chatID int64, asFile bool) {
 	// Report status
 	stopReportChannel := statusReporter(chatID, "upload_photo")
 	defer close(stopReportChannel)
@@ -189,34 +189,47 @@ func handleAlbumUpload(album reddit.FetchResultAlbum, chatID int64) {
 	for _, media := range album.Album {
 		var tmpFile *os.File
 		var link string
+		var f interface{}
 		switch media.Type {
 		case reddit.FetchResultMediaTypePhoto:
 			tmpFile, err = reddit.DownloadPhoto(media.Link)
 			if err == nil {
-				f := tgbotapi.NewInputMediaPhoto(telegramUploadOsFile{tmpFile})
-				f.Caption = media.Caption
-				fileConfigs = append(fileConfigs, f)
-				link = media.Link
-				fileLinks = append(fileLinks, media.Link)
+				if asFile {
+					uploadFile := tgbotapi.NewInputMediaDocument(telegramUploadOsFile{tmpFile})
+					uploadFile.Caption = media.Caption
+					f = uploadFile
+				} else {
+					uploadFile := tgbotapi.NewInputMediaPhoto(telegramUploadOsFile{tmpFile})
+					uploadFile.Caption = media.Caption
+					f = uploadFile
+				}
 			}
 		case reddit.FetchResultMediaTypeGif:
 			tmpFile, err = reddit.DownloadGif(media.Link)
 			if err == nil {
-				f := tgbotapi.NewInputMediaVideo(telegramUploadOsFile{tmpFile}) // not sure why...
-				f.Caption = media.Caption
-				fileConfigs = append(fileConfigs, f)
-				link = media.Link
-				fileLinks = append(fileLinks, media.Link)
+				if asFile {
+					uploadFile := tgbotapi.NewInputMediaDocument(telegramUploadOsFile{tmpFile})
+					uploadFile.Caption = media.Caption
+					f = uploadFile
+				} else {
+					uploadFile := tgbotapi.NewInputMediaVideo(telegramUploadOsFile{tmpFile})
+					uploadFile.Caption = media.Caption
+					f = uploadFile
+				}
 			}
 		case reddit.FetchResultMediaTypeVideo:
 			_, tmpFile, err = reddit.DownloadVideo(media.Link)
 			if err == nil {
-				f := tgbotapi.NewInputMediaVideo(telegramUploadOsFile{tmpFile})
-				f.Caption = media.Caption
-				f.SupportsStreaming = true
-				fileConfigs = append(fileConfigs, f)
-				link = media.Link
-				fileLinks = append(fileLinks, media.Link)
+				if asFile {
+					uploadFile := tgbotapi.NewInputMediaDocument(telegramUploadOsFile{tmpFile})
+					uploadFile.Caption = media.Caption
+					f = uploadFile
+				} else {
+					uploadFile := tgbotapi.NewInputMediaVideo(telegramUploadOsFile{tmpFile})
+					uploadFile.Caption = media.Caption
+					uploadFile.SupportsStreaming = true
+					f = uploadFile
+				}
 			}
 		}
 		if err != nil {
@@ -224,6 +237,9 @@ func handleAlbumUpload(album reddit.FetchResultAlbum, chatID int64) {
 			bot.Send(tgbotapi.NewMessage(chatID, "Cannot download gallery media; The link was: "+link))
 			continue
 		}
+		fileConfigs = append(fileConfigs, f)
+		link = media.Link
+		fileLinks = append(fileLinks, media.Link)
 		filePaths = append(filePaths, tmpFile)
 	}
 	// Now upload 10 of them at once
@@ -243,6 +259,8 @@ func handleAlbumUpload(album reddit.FetchResultAlbum, chatID int64) {
 			_, err = bot.Send(tgbotapi.NewPhoto(chatID, f.Media))
 		case tgbotapi.InputMediaVideo:
 			_, err = bot.Send(tgbotapi.NewVideo(chatID, f.Media))
+		case tgbotapi.InputMediaDocument:
+			_, err = bot.Send(tgbotapi.NewDocument(chatID, f.Media))
 		}
 	} else if len(fileConfigs) > 1 {
 		_, err = bot.SendMediaGroup(tgbotapi.NewMediaGroup(chatID, fileConfigs))

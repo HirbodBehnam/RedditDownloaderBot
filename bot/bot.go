@@ -120,15 +120,28 @@ func fetchPostDetailsAndSend(text string, chatID int64, messageID int) {
 			AudioIndex:    audioIndex,
 		})
 	case reddit.FetchResultAlbum:
-		handleAlbumUpload(data, chatID)
-		return
+		idString := util.UUIDToBase64(uuid.New())
+		albumCache.Set(idString, data)
+		msg.Text = "Download album as media or files?"
+		msg.ReplyMarkup = tgbotapi.InlineKeyboardMarkup{
+			InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{{
+				tgbotapi.NewInlineKeyboardButtonData("Media", CallbackButtonData{
+					ID:   idString,
+					Mode: CallbackButtonDataModePhoto,
+				}.String()),
+				tgbotapi.NewInlineKeyboardButtonData("File", CallbackButtonData{
+					ID:   idString,
+					Mode: CallbackButtonDataModeFile,
+				}.String()),
+			}},
+		}
 	default:
 		log.Printf("unknown type: %T\n", result)
 		msg.Text = "unknown type (report please)"
 	}
 	_, err := bot.Send(msg)
 	if err != nil {
-		msg.ParseMode = ""
+		msg.ParseMode = "" // fall back and don't format message
 		bot.Send(msg)
 	}
 }
@@ -154,6 +167,12 @@ func handleCallback(dataString string, chatID int64, msgId int) {
 	// Get the cache from database
 	cachedData, exists := mediaCache.GetAndDelete(data.ID)
 	if !exists {
+		// Check albums
+		if album, exists := albumCache.GetAndDelete(data.ID); exists {
+			handleAlbumUpload(album, chatID, data.Mode == CallbackButtonDataModeFile)
+			return
+		}
+		// It does not exists...
 		bot.Send(tgbotapi.NewMessage(chatID, "Please resend the link to bot"))
 		return
 	}

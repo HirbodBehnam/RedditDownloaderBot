@@ -30,7 +30,7 @@ const (
 )
 
 // String returns the json format of CallbackButtonData
-func (c *CallbackButtonData) String() string {
+func (c CallbackButtonData) String() string {
 	b, _ := json.Marshal(c)
 	return util.ByteToString(b)
 }

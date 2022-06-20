@@ -9,6 +9,7 @@ import (
 
 // mediaCache contains the requests of each user. Will reset in 10 minutes
 var mediaCache *util.TimedCache[string, CallbackDataCached]
+var albumCache *util.TimedCache[string, reddit.FetchResultAlbum]
 var bot *tgbotapi.BotAPI
 var RedditOauth *reddit.Oauth
 
@@ -24,4 +25,5 @@ const Markdown = "Markdown"
 
 func init() {
 	mediaCache = util.NewTimedCache[string, CallbackDataCached](5*time.Minute, 10*time.Minute)
+	albumCache = util.NewTimedCache[string, reddit.FetchResultAlbum](5*time.Minute, 10*time.Minute)
 }

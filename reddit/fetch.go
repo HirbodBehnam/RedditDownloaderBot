@@ -145,7 +145,16 @@ func (o *Oauth) StartFetch(postUrl string) (fetchResult interface{}, fetchError 
 				}
 			} else {
 				result.Type = FetchResultMediaTypePhoto
-				result.Medias = extractPhotoGifQualities(root["preview"].(map[string]interface{})["images"].([]interface{})[0].(map[string]interface{}))
+				// Send the original file as well if it's on reddit
+				if link, ok := root["url"].(string); ok && strings.HasPrefix(link, "https://i.redd.it/") {
+					result.Medias = []FetchResultMediaEntry{
+						{
+							link,
+							"Original",
+						},
+					}
+				}
+				result.Medias = append(result.Medias, extractPhotoGifQualities(root["preview"].(map[string]interface{})["images"].([]interface{})[0].(map[string]interface{}))...)
 			}
 			return result, nil
 		case "link": // link
@@ -419,18 +428,19 @@ func getGalleryData(files map[string]interface{}, galleryDataItems []interface{}
 // of the photo or gif and their links
 func extractPhotoGifQualities(data map[string]interface{}) []FetchResultMediaEntry {
 	result := make([]FetchResultMediaEntry, 1+len(data["resolutions"].([]interface{})))
-	// At first include source image
-	{
-		u, w, h := extractLinkAndRes(data["source"])
-		result[0] = FetchResultMediaEntry{
+	// Now get all other thumbs
+	for i, v := range data["resolutions"].([]interface{}) {
+		u, w, h := extractLinkAndRes(v)
+		result[i] = FetchResultMediaEntry{
 			Link:    u,
 			Quality: w + "×" + h,
 		}
 	}
-	// Now get all other thumbs
-	for i, v := range data["resolutions"].([]interface{}) {
-		u, w, h := extractLinkAndRes(v)
-		result[i+1] = FetchResultMediaEntry{
+	// Include source image at last to keep the increasing quality
+	// Just a note for myself: This source is different from the one in the url field of root
+	{
+		u, w, h := extractLinkAndRes(data["source"])
+		result[len(result)-1] = FetchResultMediaEntry{
 			Link:    u,
 			Quality: w + "×" + h,
 		}

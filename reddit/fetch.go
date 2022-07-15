@@ -427,23 +427,29 @@ func getGalleryData(files map[string]interface{}, galleryDataItems []interface{}
 // extractPhotoGifQualities creates an array of FetchResultMediaEntry which are the qualities
 // of the photo or gif and their links
 func extractPhotoGifQualities(data map[string]interface{}) []FetchResultMediaEntry {
-	result := make([]FetchResultMediaEntry, 1+len(data["resolutions"].([]interface{})))
-	// Now get all other thumbs
-	for i, v := range data["resolutions"].([]interface{}) {
-		u, w, h := extractLinkAndRes(v)
-		result[i] = FetchResultMediaEntry{
-			Link:    u,
-			Quality: w + "×" + h,
-		}
-	}
+	resolutions := data["resolutions"].([]interface{})
+	result := make([]FetchResultMediaEntry, 0, 1+len(resolutions))
 	// Include source image at last to keep the increasing quality
-	// Just a note for myself: This source is different from the one in the url field of root
+	// Just a note for myself: This can be different from the one in resolutions
 	{
 		u, w, h := extractLinkAndRes(data["source"])
-		result[len(result)-1] = FetchResultMediaEntry{
+		result = append(result, FetchResultMediaEntry{
 			Link:    u,
 			Quality: w + "×" + h,
+		})
+	}
+	// Now get all other thumbs
+	for i := len(resolutions) - 1; i >= 0; i-- {
+		u, w, h := extractLinkAndRes(resolutions[i])
+		if i == len(resolutions)-1 { // In first case, the sizes can be same. Example: https://www.reddit.com/r/dankmemes/comments/vqphiy/more_than_bargain_for/
+			if w+"×"+h == result[0].Quality {
+				continue
+			}
 		}
+		result = append(result, FetchResultMediaEntry{
+			Link:    u,
+			Quality: w + "×" + h,
+		})
 	}
 	return result
 }

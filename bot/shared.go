@@ -1,15 +1,13 @@
 package bot
 
 import (
+	"github.com/HirbodBehnam/RedditDownloaderBot/cache"
 	"github.com/HirbodBehnam/RedditDownloaderBot/reddit"
-	"github.com/HirbodBehnam/RedditDownloaderBot/util"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"time"
 )
 
-// mediaCache contains the requests of each user. Will reset in 10 minutes
-var mediaCache *util.TimedCache[string, CallbackDataCached]
-var albumCache *util.TimedCache[string, reddit.FetchResultAlbum]
+// CallbackCache is used to cache the data of the callback queries
+var CallbackCache cache.Interface
 var bot *tgbotapi.BotAPI
 var RedditOauth *reddit.Oauth
 
@@ -22,8 +20,3 @@ const NoThumbnailNeededSize = 10 * 1000 * 1000
 
 // Markdown is the styling format used in telegram messages
 const Markdown = "Markdown"
-
-func init() {
-	mediaCache = util.NewTimedCache[string, CallbackDataCached](5*time.Minute, 10*time.Minute)
-	albumCache = util.NewTimedCache[string, reddit.FetchResultAlbum](5*time.Minute, 10*time.Minute)
-}

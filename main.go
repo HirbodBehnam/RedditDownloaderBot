@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/HirbodBehnam/RedditDownloaderBot/bot"
+	"github.com/HirbodBehnam/RedditDownloaderBot/cache"
 	"github.com/HirbodBehnam/RedditDownloaderBot/config"
 	"github.com/HirbodBehnam/RedditDownloaderBot/reddit"
 	"github.com/HirbodBehnam/RedditDownloaderBot/util"
@@ -10,6 +11,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func main() {
@@ -25,6 +27,17 @@ func main() {
 	botToken := os.Getenv("BOT_TOKEN")
 	if clientID == "" || clientSecret == "" || botToken == "" {
 		log.Fatalln("Please set CLIENT_ID, CLIENT_SECRET and BOT_TOKEN")
+	}
+	// Start up database
+	if redisAddress := os.Getenv("REDIS_ADDRESS"); redisAddress != "" {
+		// Parse ttl
+		ttl, _ := time.ParseDuration(os.Getenv("REDIS_TTL"))
+		if ttl <= 0 {
+			ttl = 5 * time.Minute
+		}
+		bot.CallbackCache = cache.NewRedisCache(redisAddress, os.Getenv("REDIS_PASSWORD"), ttl)
+	} else { // Simple in cache memory
+		bot.CallbackCache = cache.NewMemoryCache(5*time.Minute, 10*time.Minute)
 	}
 	// Start the reddit oauth
 	bot.RedditOauth, err = reddit.NewRedditOauth(clientID, clientSecret)

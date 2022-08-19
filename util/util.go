@@ -2,6 +2,7 @@ package util
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"github.com/HirbodBehnam/RedditDownloaderBot/config"
 	"github.com/google/uuid"
 	"log"
@@ -63,4 +64,10 @@ func ByteToString(b []byte) string {
 // Use this function to call function like unmarshal text manually
 func StringToByte(s string) []byte {
 	return unsafe.Slice((*byte)(unsafe.Pointer((*reflect.StringHeader)(unsafe.Pointer(&s)).Data)), len(s))
+}
+
+// ToJsonString converts an object to json string
+func ToJsonString(object any) string {
+	data, _ := json.Marshal(object)
+	return ByteToString(data)
 }

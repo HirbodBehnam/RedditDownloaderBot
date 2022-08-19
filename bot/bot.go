@@ -2,6 +2,7 @@ package bot
 
 import (
 	"encoding/json"
+	"github.com/HirbodBehnam/RedditDownloaderBot/cache"
 	"github.com/HirbodBehnam/RedditDownloaderBot/config"
 	"github.com/HirbodBehnam/RedditDownloaderBot/reddit"
 	"github.com/HirbodBehnam/RedditDownloaderBot/util"
@@ -111,17 +112,23 @@ func fetchPostDetailsAndSend(text string, chatID int64, messageID int) {
 			msg.ReplyMarkup = createVideoInlineKeyboard(idString, data)
 		}
 		// Insert the id in cache
-		mediaCache.Set(idString, CallbackDataCached{
+		err := CallbackCache.SetMediaCache(idString, cache.CallbackDataCached(CallbackDataCached{
 			Links:         data.Medias.ToLinkMap(),
 			Title:         data.Title,
 			ThumbnailLink: data.ThumbnailLink,
 			Type:          data.Type,
 			Duration:      data.Duration,
 			AudioIndex:    audioIndex,
-		})
+		}))
+		if err != nil {
+			log.Println("Cannot set the media cache in database:", err)
+		}
 	case reddit.FetchResultAlbum:
 		idString := util.UUIDToBase64(uuid.New())
-		albumCache.Set(idString, data)
+		err := CallbackCache.SetAlbumCache(idString, data)
+		if err != nil {
+			log.Println("Cannot set the album cache in database:", err)
+		}
 		msg.Text = "Download album as media or files?"
 		msg.ReplyMarkup = tgbotapi.InlineKeyboardMarkup{
 			InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{{
@@ -165,15 +172,25 @@ func handleCallback(dataString string, chatID int64, msgId int) {
 		return
 	}
 	// Get the cache from database
-	cachedData, exists := mediaCache.GetAndDelete(data.ID)
-	if !exists {
+	cachedData, err := CallbackCache.GetAndDeleteMediaCache(data.ID)
+	if err == cache.NotFoundErr {
 		// Check albums
-		if album, exists := albumCache.GetAndDelete(data.ID); exists {
+		var album reddit.FetchResultAlbum
+		album, err = CallbackCache.GetAndDeleteAlbumCache(data.ID)
+		if err == nil {
 			handleAlbumUpload(album, chatID, data.Mode == CallbackButtonDataModeFile)
 			return
+		} else if err == cache.NotFoundErr {
+			// It does not exists...
+			bot.Send(tgbotapi.NewMessage(chatID, "Please resend the link to bot"))
+			return
 		}
-		// It does not exists...
-		bot.Send(tgbotapi.NewMessage(chatID, "Please resend the link to bot"))
+		// Fall to report internal error
+	}
+	// Check other errors
+	if err != nil {
+		log.Println("Cannot get callback id from database:", err)
+		bot.Send(tgbotapi.NewMessage(chatID, "Internal error"))
 		return
 	}
 	// Check the link

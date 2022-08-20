@@ -24,7 +24,7 @@ type RedisCache struct {
 }
 
 // NewRedisCache will create a new redis cache
-func NewRedisCache(address, password string, ttl time.Duration) RedisCache {
+func NewRedisCache(address, password string, ttl time.Duration) (RedisCache, error) {
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     address,
 		Password: password,
@@ -32,7 +32,7 @@ func NewRedisCache(address, password string, ttl time.Duration) RedisCache {
 	return RedisCache{
 		client: rdb,
 		ttl:    ttl,
-	}
+	}, rdb.Ping(context.Background()).Err()
 }
 
 func (r RedisCache) SetMediaCache(key string, value CallbackDataCached) error {

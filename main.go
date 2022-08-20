@@ -35,10 +35,14 @@ func main() {
 		if ttl <= 0 {
 			ttl = 5 * time.Minute
 		}
-		bot.CallbackCache = cache.NewRedisCache(redisAddress, os.Getenv("REDIS_PASSWORD"), ttl)
+		bot.CallbackCache, err = cache.NewRedisCache(redisAddress, os.Getenv("REDIS_PASSWORD"), ttl)
+		if err != nil {
+			log.Fatalln("Cannot connect to redis:", err)
+		}
 	} else { // Simple in cache memory
 		bot.CallbackCache = cache.NewMemoryCache(5*time.Minute, 10*time.Minute)
 	}
+	defer bot.CallbackCache.Close()
 	// Start the reddit oauth
 	bot.RedditOauth, err = reddit.NewRedditOauth(clientID, clientSecret)
 	if err != nil {

@@ -29,13 +29,13 @@ func main() {
 		log.Fatalln("Please set CLIENT_ID, CLIENT_SECRET and BOT_TOKEN")
 	}
 	// Start up database
-	if redisAddress := os.Getenv("REDIS_ADDRESS"); redisAddress != "" {
+	if redisAddress, redisPort := os.Getenv("REDIS_ADDRESS"), os.Getenv("REDIS_PORT"); redisAddress != "" && redisPort != "" {
 		// Parse ttl
 		ttl, _ := time.ParseDuration(os.Getenv("REDIS_TTL"))
 		if ttl <= 0 {
 			ttl = 5 * time.Minute
 		}
-		bot.CallbackCache, err = cache.NewRedisCache(redisAddress, os.Getenv("REDIS_PASSWORD"), ttl)
+		bot.CallbackCache, err = cache.NewRedisCache(redisAddress+":"+redisPort, os.Getenv("REDIS_PASSWORD"), ttl)
 		if err != nil {
 			log.Fatalln("Cannot connect to redis:", err)
 		}

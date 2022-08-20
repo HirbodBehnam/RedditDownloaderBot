@@ -1,0 +1,16 @@
+version: "3.7"
+
+services:
+  app:
+    build: .
+    depends_on:
+      - redis
+    environment:
+      CLIENT_ID: "1234"
+      CLIENT_SECRET: "4321"
+      BOT_TOKEN: "token"
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+  redis:
+    image: redis:7-alpine

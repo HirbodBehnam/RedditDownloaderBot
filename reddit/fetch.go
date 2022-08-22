@@ -258,6 +258,7 @@ func (o *Oauth) StartFetch(postUrl string) (fetchResult interface{}, fetchError 
 						}
 					}
 
+					// api for redgifs is in https://i.redgifs.com/docs/index.html
 					infoUrl := fmt.Sprintf("https://api.redgifs.com/v2/gifs/%s", redgifsid)
 
 					source, err := config.GlobalHttpClient.Get(infoUrl)

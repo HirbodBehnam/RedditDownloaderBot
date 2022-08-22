@@ -3,6 +3,7 @@ package reddit
 import (
 	"fmt"
 	"github.com/HirbodBehnam/RedditDownloaderBot/config"
+	"github.com/HirbodBehnam/RedditDownloaderBot/reddit/helpers"
 	"github.com/HirbodBehnam/RedditDownloaderBot/util"
 	"github.com/PuerkitoBio/goquery"
 	"html"
@@ -250,7 +251,7 @@ func (o *Oauth) StartFetch(postUrl string) (fetchResult interface{}, fetchError 
 					return result, nil
 				case "redgifs.com":
 					// get redgifs info from api
-					redgifsid := util.GetRedGifsID(root["url"].(string))
+					redgifsid := helpers.GetRedGifsID(root["url"].(string))
 					if redgifsid == "" {
 						return nil, &FetchError{
 							NormalError: "cannot get redgifs id  from " + root["url"].(string) + ": " + err.Error(),
@@ -270,7 +271,7 @@ func (o *Oauth) StartFetch(postUrl string) (fetchResult interface{}, fetchError 
 					}
 					defer source.Body.Close()
 					// get video urls
-					doc, err := util.GetRedGifsInfo(source.Body)
+					doc, err := helpers.GetRedGifsInfo(source.Body)
 					if err != nil {
 						return nil, &FetchError{
 							NormalError: "cannot get the parse redgifs info from " + infoUrl + ": " + err.Error(),

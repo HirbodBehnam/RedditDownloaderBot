@@ -287,14 +287,17 @@ func (o *Oauth) StartFetch(postUrl string) (fetchResult interface{}, fetchError 
 								Quality: "sd",
 								Link:    doc.Gif.Urls.Sd,
 							},
-							{
-								Quality: "gif",
-								Link:    doc.Gif.Urls.Gif,
-							},
 						},
 						ThumbnailLink: doc.Gif.Urls.Thumbnail,
 						Title:         title,
 						Type:          FetchResultMediaTypeVideo,
+					}
+
+					if doc.Gif.Urls.Gif != "" {
+						result.Medias = append(result.Medias, FetchResultMediaEntry{
+							Quality: "gif",
+							Link:    doc.Gif.Urls.Gif,
+						})
 					}
 					return result, nil
 				default:
@@ -315,7 +318,7 @@ func (o *Oauth) StartFetch(postUrl string) (fetchResult interface{}, fetchError 
 				BotError:    "This post type is not supported: " + hint.(string),
 			}
 		}
-	} else { // text or gallery
+	} else {                                       // text or gallery
 		if gData, ok := root["gallery_data"]; ok { // gallery
 			if data, ok := root["media_metadata"]; ok {
 				return getGalleryData(data.(map[string]interface{}), gData.(map[string]interface{})["items"].([]interface{}))

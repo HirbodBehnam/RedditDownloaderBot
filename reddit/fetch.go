@@ -280,16 +280,16 @@ func (o *Oauth) StartFetch(postUrl string) (fetchResult interface{}, fetchError 
 					result := FetchResultMedia{
 						Medias: []FetchResultMediaEntry{
 							{
-								Link:    "hd",
-								Quality: doc.Gif.Urls.Hd,
+								Quality: "hd",
+								Link:    doc.Gif.Urls.Hd,
 							},
 							{
-								Link:    "sd",
-								Quality: doc.Gif.Urls.Sd,
+								Quality: "sd",
+								Link:    doc.Gif.Urls.Sd,
 							},
 							{
-								Link:    "gif",
-								Quality: doc.Gif.Urls.Gif,
+								Quality: "gif",
+								Link:    doc.Gif.Urls.Gif,
 							},
 						},
 						ThumbnailLink: doc.Gif.Urls.Thumbnail,

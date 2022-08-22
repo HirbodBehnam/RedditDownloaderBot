@@ -2,9 +2,6 @@ package reddit
 
 import (
 	"fmt"
-	"github.com/HirbodBehnam/RedditDownloaderBot/config"
-	"github.com/HirbodBehnam/RedditDownloaderBot/util"
-	"github.com/PuerkitoBio/goquery"
 	"html"
 	"log"
 	"net/url"
@@ -12,6 +9,10 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/HirbodBehnam/RedditDownloaderBot/config"
+	"github.com/HirbodBehnam/RedditDownloaderBot/util"
+	"github.com/PuerkitoBio/goquery"
 )
 
 // qualities is the possible qualities of videos in reddit
@@ -247,6 +248,54 @@ func (o *Oauth) StartFetch(postUrl string) (fetchResult interface{}, fetchError 
 							result.Medias[0].Link, _ = s.Attr("content")
 						}
 					})
+					return result, nil
+				case "redgifs.com":
+					// Download the source at first
+					redgifsid := util.GetRedGifsID(root["url"].(string))
+					if redgifsid == "" {
+						return nil, &FetchError{
+							NormalError: "cannot get redgifs id  from " + root["url"].(string) + ": " + err.Error(),
+							BotError:    "Cannot get redgifs id  from  " + root["url"].(string),
+						}
+					}
+
+					infoUrl := fmt.Sprintf("https://api.redgifs.com/v2/gifs/%s", redgifsid)
+
+					source, err := config.GlobalHttpClient.Get(infoUrl)
+					if err != nil {
+						return nil, &FetchError{
+							NormalError: "cannot get redgifs info " + infoUrl + ": " + err.Error(),
+							BotError:    "Cannot get redgifs info " + infoUrl,
+						}
+					}
+					defer source.Body.Close()
+					// Get the meta tag og:video
+					doc, err := util.GetRedGifsInfo(source.Body)
+					if err != nil {
+						return nil, &FetchError{
+							NormalError: "cannot get the parse redgifs info from " + infoUrl + ": " + err.Error(),
+							BotError:    "Cannot get the parse redgifs info from " + infoUrl,
+						}
+					}
+					result := FetchResultMedia{
+						Medias: []FetchResultMediaEntry{
+							{
+								Link:    "hd",
+								Quality: doc.Gif.Urls.Hd,
+							},
+							{
+								Link:    "sd",
+								Quality: doc.Gif.Urls.Sd,
+							},
+							{
+								Link:    "gif",
+								Quality: doc.Gif.Urls.Gif,
+							},
+						},
+						ThumbnailLink: doc.Gif.Urls.Thumbnail,
+						Title:         title,
+						Type:          FetchResultMediaTypeVideo,
+					}
 					return result, nil
 				default:
 					return nil, &FetchError{

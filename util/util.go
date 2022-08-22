@@ -68,6 +68,7 @@ type RedGisGifUrls struct {
 	Vthumbnail string `json:"vthumbnail"`
 }
 
+// GetRedGifsInfo parse gifs info(json) from request body
 func GetRedGifsInfo(body io.ReadCloser) (info *RedGisInfo, err error) {
 	ret := &RedGisInfo{}
 

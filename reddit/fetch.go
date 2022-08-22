@@ -2,6 +2,9 @@ package reddit
 
 import (
 	"fmt"
+	"github.com/HirbodBehnam/RedditDownloaderBot/config"
+	"github.com/HirbodBehnam/RedditDownloaderBot/util"
+	"github.com/PuerkitoBio/goquery"
 	"html"
 	"log"
 	"net/url"
@@ -9,10 +12,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-
-	"github.com/HirbodBehnam/RedditDownloaderBot/config"
-	"github.com/HirbodBehnam/RedditDownloaderBot/util"
-	"github.com/PuerkitoBio/goquery"
 )
 
 // qualities is the possible qualities of videos in reddit
@@ -250,7 +249,7 @@ func (o *Oauth) StartFetch(postUrl string) (fetchResult interface{}, fetchError 
 					})
 					return result, nil
 				case "redgifs.com":
-					// Download the source at first
+					// get redgifs info from api
 					redgifsid := util.GetRedGifsID(root["url"].(string))
 					if redgifsid == "" {
 						return nil, &FetchError{
@@ -269,7 +268,7 @@ func (o *Oauth) StartFetch(postUrl string) (fetchResult interface{}, fetchError 
 						}
 					}
 					defer source.Body.Close()
-					// Get the meta tag og:video
+					// get video urls
 					doc, err := util.GetRedGifsInfo(source.Body)
 					if err != nil {
 						return nil, &FetchError{

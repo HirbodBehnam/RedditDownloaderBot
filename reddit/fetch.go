@@ -318,7 +318,7 @@ func (o *Oauth) StartFetch(postUrl string) (fetchResult interface{}, fetchError 
 				BotError:    "This post type is not supported: " + hint.(string),
 			}
 		}
-	} else {                                       // text or gallery
+	} else { // text or gallery
 		if gData, ok := root["gallery_data"]; ok { // gallery
 			if data, ok := root["media_metadata"]; ok {
 				return getGalleryData(data.(map[string]interface{}), gData.(map[string]interface{})["items"].([]interface{}))

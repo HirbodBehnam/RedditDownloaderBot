@@ -26,6 +26,7 @@ A telegram bot to download the reddit posts.
 1. imgur (gifs and pictures)
 2. gfycat (Note that some of them may not work because they are not hosted on reddit. Also, they are soundless)
 3. streamable
+4. redgifs
 
 ## Setup
 

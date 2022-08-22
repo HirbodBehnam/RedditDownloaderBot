@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"reflect"
+	"strconv"
 	"unsafe"
 )
 
@@ -70,4 +71,11 @@ func StringToByte(s string) []byte {
 func ToJsonString(object any) string {
 	data, _ := json.Marshal(object)
 	return ByteToString(data)
+}
+
+// ParseEnvironmentVariableBool parses an environment variable which must represent a bool.
+// It returns false if the variable data is malformed or non-existent
+func ParseEnvironmentVariableBool(name string) bool {
+	result, _ := strconv.ParseBool(os.Getenv(name))
+	return result
 }

@@ -58,6 +58,26 @@ For running, you have to set the environmental variables like this:
 export CLIENT_ID=p-jcoLKBynTLew
 export CLIENT_SECRET=gko_LXELoV07ZBNUXrvWZfzE3aI
 export BOT_TOKEN=1234567:4TT8bAc8GHUspu3ERYn-KGcvsvGB9u_n4ddy
-export ALLOWED_USERS=1,2,3 # Optional; You can simply ignore this line
 ./bot
+```
+
+#### Optional Settings
+
+##### Allowed Users
+
+You can configure the bot to allow only a certain users to access it. This is useful for deploying private bots.
+To do so, you need the user ids of the accounts which you want to whitelist. You can get the user id
+from [@myidbot](https://t.me/myidbot).
+After create an environment variable called `ALLOWED_USERS` and set its value to comma seperated user ids. For example:
+
+```bash
+export ALLOWED_USERS=1,2,3
+```
+
+##### Disable NSFW
+
+You can forbid the bot to download NSFW posts. To do so, set this environment variable:
+
+```bash
+export DENY_NSFW=true
 ```

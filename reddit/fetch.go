@@ -15,6 +15,15 @@ import (
 	"strings"
 )
 
+// If this variable is true, it means that we don't allow nsfw posts to be downloaded
+var denyNsfw = util.ParseEnvironmentVariableBool("DENY_NSFW")
+
+// This error is returned if NSFW posts are disabled via denyNsfw and a nsfw post is requested
+var nsfwNotAllowedErr = &FetchError{
+	NormalError: "",
+	BotError:    "NSFW posts are disabled.",
+}
+
 // qualities is the possible qualities of videos in reddit
 var qualities = [...]string{"1080", "720", "480", "360", "240", "96"}
 
@@ -103,7 +112,12 @@ func (o *Oauth) StartFetch(postUrl string) (fetchResult interface{}, fetchError 
 		}
 		root = data.(map[string]interface{})
 	}
-	// Het the title
+	// Check if the post is nsfw and bot forbids them
+	nsfw, _ := root["over_18"].(bool)
+	if denyNsfw && nsfw {
+		return nil, nsfwNotAllowedErr
+	}
+	// Get the title
 	title := root["title"].(string)
 	title = html.UnescapeString(title)
 	// Check thumbnail; This must be done before checking cross posts

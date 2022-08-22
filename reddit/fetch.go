@@ -248,6 +248,58 @@ func (o *Oauth) StartFetch(postUrl string) (fetchResult interface{}, fetchError 
 						}
 					})
 					return result, nil
+				case "redgifs.com":
+					// get redgifs info from api
+					redgifsid := util.GetRedGifsID(root["url"].(string))
+					if redgifsid == "" {
+						return nil, &FetchError{
+							NormalError: "cannot get redgifs id  from " + root["url"].(string) + ": " + err.Error(),
+							BotError:    "Cannot get redgifs id  from  " + root["url"].(string),
+						}
+					}
+
+					// api for redgifs is in https://i.redgifs.com/docs/index.html
+					infoUrl := fmt.Sprintf("https://api.redgifs.com/v2/gifs/%s", redgifsid)
+
+					source, err := config.GlobalHttpClient.Get(infoUrl)
+					if err != nil {
+						return nil, &FetchError{
+							NormalError: "cannot get redgifs info " + infoUrl + ": " + err.Error(),
+							BotError:    "Cannot get redgifs info " + infoUrl,
+						}
+					}
+					defer source.Body.Close()
+					// get video urls
+					doc, err := util.GetRedGifsInfo(source.Body)
+					if err != nil {
+						return nil, &FetchError{
+							NormalError: "cannot get the parse redgifs info from " + infoUrl + ": " + err.Error(),
+							BotError:    "Cannot get the parse redgifs info from " + infoUrl,
+						}
+					}
+					result := FetchResultMedia{
+						Medias: []FetchResultMediaEntry{
+							{
+								Quality: "hd",
+								Link:    doc.Gif.Urls.Hd,
+							},
+							{
+								Quality: "sd",
+								Link:    doc.Gif.Urls.Sd,
+							},
+						},
+						ThumbnailLink: doc.Gif.Urls.Thumbnail,
+						Title:         title,
+						Type:          FetchResultMediaTypeVideo,
+					}
+
+					if doc.Gif.Urls.Gif != "" {
+						result.Medias = append(result.Medias, FetchResultMediaEntry{
+							Quality: "gif",
+							Link:    doc.Gif.Urls.Gif,
+						})
+					}
+					return result, nil
 				default:
 					return nil, &FetchError{
 						NormalError: "",

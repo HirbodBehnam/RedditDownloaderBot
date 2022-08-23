@@ -11,7 +11,7 @@ RUN go mod download
 
 COPY . ./
 
-RUN go build -o /reddit-downloader-bot
+RUN go build -o /reddit-downloader-bot ./cmd/RedditDownloaderBot
 
 ## Deploy
 FROM alpine:latest

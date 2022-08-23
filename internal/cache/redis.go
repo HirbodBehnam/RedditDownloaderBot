@@ -1,10 +1,10 @@
 package cache
 
 import (
+	"RedditDownloaderBot/pkg/reddit"
+	"RedditDownloaderBot/pkg/util"
 	"context"
 	"encoding/json"
-	"github.com/HirbodBehnam/RedditDownloaderBot/reddit"
-	"github.com/HirbodBehnam/RedditDownloaderBot/util"
 	"github.com/go-faster/errors"
 	"github.com/go-redis/redis/v9"
 	"strings"
@@ -67,13 +67,15 @@ func (r RedisCache) Close() error {
 	return r.client.Close()
 }
 
+// parseRedisJson will get the value of a key which is in redis + the error message of redis.
+// Then, it tries to parse the data as the generic struct passed to it.
 func parseRedisJson[T any](val string, err error) (T, error) {
 	// Check errors
 	var result T
 	if err == redis.Nil {
 		return result, NotFoundErr
 	} else if err != nil {
-		return result, err
+		return result, errors.Wrap(err, "cannot get data from redis")
 	}
 	// Parse the json
 	err = json.NewDecoder(strings.NewReader(val)).Decode(&result)

@@ -1,9 +1,9 @@
 package reddit
 
 import (
+	"RedditDownloaderBot/pkg/common"
+	"RedditDownloaderBot/pkg/util"
 	"bytes"
-	"github.com/HirbodBehnam/RedditDownloaderBot/config"
-	"github.com/HirbodBehnam/RedditDownloaderBot/util"
 	"github.com/go-faster/errors"
 	"io"
 	"log"
@@ -179,7 +179,7 @@ func DownloadAudio(audioUrl string) (*os.File, error) {
 // It also checks where the file is too big to be uploaded to Telegram or not
 // If the file is too big, it returns FileTooBigError
 func downloadToFile(link string, f *os.File) error {
-	resp, err := config.GlobalHttpClient.Get(link)
+	resp, err := common.GlobalHttpClient.Get(link)
 	if err != nil {
 		return err
 	}
@@ -207,6 +207,6 @@ func HasAudio(videoURL string) (audioURL string, hasAudio bool) {
 		audioURL += "/audio"
 	}
 	// Check if it exists
-	resp, err := config.GlobalHttpClient.Head(audioURL)
+	resp, err := common.GlobalHttpClient.Head(audioURL)
 	return audioURL, err == nil && resp.StatusCode == http.StatusOK
 }

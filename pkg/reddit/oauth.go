@@ -1,9 +1,9 @@
 package reddit
 
 import (
+	"RedditDownloaderBot/pkg/common"
 	"bytes"
 	"encoding/json"
-	"github.com/HirbodBehnam/RedditDownloaderBot/config"
 	"github.com/go-faster/errors"
 	"io"
 	"log"
@@ -15,7 +15,7 @@ import (
 )
 
 // userAgent of requests
-const userAgent = "TelegramBot:Reddit-Downloader-Bot:" + config.Version + " (by /u/HirbodBehnam)"
+const userAgent = "TelegramBot:Reddit-Downloader-Bot:" + common.Version + " (by /u/HirbodBehnam)"
 
 // postApiPoint is the endpoint format which we should get info about posts
 const postApiPoint = "https://api.reddit.com/api/info/?id=t3_"
@@ -25,7 +25,8 @@ const commentApiPoint = "https://api.reddit.com/api/info/?id=t1_"
 
 const encodedGrantType = "grant_type=client_credentials&duration=permanent"
 
-var RateLimitError = errors.New("rate limit reached")
+// RateLimitErr is returned when we reach the rate limit of Reddit
+var RateLimitErr = errors.New("rate limit reached")
 
 // Oauth is a struct which can talk to reddit endpoints
 type Oauth struct {
@@ -89,7 +90,7 @@ func (o *Oauth) createToken() (time.Duration, error) {
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.SetBasicAuth(o.clientId, o.clientSecret)
 	// Send the request
-	resp, err := config.GlobalHttpClient.Do(req)
+	resp, err := common.GlobalHttpClient.Do(req)
 	if err != nil {
 		return 0, errors.Wrap(err, "cannot do the request")
 	}
@@ -124,7 +125,7 @@ func (o *Oauth) GetPost(id string) (map[string]interface{}, error) {
 func (o *Oauth) doGetJsonRequest(Url string) (map[string]interface{}, error) {
 	// Check rate limit
 	if time.Now().Unix() < atomic.LoadInt64(&o.rateLimitFreedom) {
-		return nil, RateLimitError
+		return nil, RateLimitErr
 	}
 	// Build the request
 	req, err := http.NewRequest("GET", Url, nil)
@@ -134,7 +135,7 @@ func (o *Oauth) doGetJsonRequest(Url string) (map[string]interface{}, error) {
 	req.Header.Set("User-Agent", userAgent)
 	req.Header.Set("Authorization", o.authorizationHeader)
 	// Do the request
-	resp, err := config.GlobalHttpClient.Do(req)
+	resp, err := common.GlobalHttpClient.Do(req)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot do the request")
 	}
@@ -143,7 +144,7 @@ func (o *Oauth) doGetJsonRequest(Url string) (map[string]interface{}, error) {
 		freedom, _ := strconv.Atoi(resp.Header.Get("X-Ratelimit-Reset"))
 		atomic.StoreInt64(&o.rateLimitFreedom, time.Now().Unix()+int64(freedom))
 		resp.Body.Close()
-		return nil, RateLimitError
+		return nil, RateLimitErr
 	}
 	// Read the body
 	var responseBody map[string]interface{}

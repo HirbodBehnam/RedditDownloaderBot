@@ -1,11 +1,11 @@
 package main
 
 import (
-	"github.com/HirbodBehnam/RedditDownloaderBot/bot"
-	"github.com/HirbodBehnam/RedditDownloaderBot/cache"
-	"github.com/HirbodBehnam/RedditDownloaderBot/config"
-	"github.com/HirbodBehnam/RedditDownloaderBot/reddit"
-	"github.com/HirbodBehnam/RedditDownloaderBot/util"
+	"RedditDownloaderBot/internal/bot"
+	"RedditDownloaderBot/internal/cache"
+	"RedditDownloaderBot/pkg/common"
+	"RedditDownloaderBot/pkg/reddit"
+	"RedditDownloaderBot/pkg/util"
 	"github.com/go-faster/errors"
 	"log"
 	"os"
@@ -17,7 +17,7 @@ import (
 func main() {
 	errors.DisableTrace()
 	var err error
-	log.Println("Reddit Downloader Bot v" + config.Version)
+	log.Println("Reddit Downloader Bot v" + common.Version)
 	if !util.DoesFfmpegExists() {
 		log.Println("WARNING: ffmpeg is not installed on your system")
 	}

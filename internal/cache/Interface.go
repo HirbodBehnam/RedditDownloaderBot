@@ -1,7 +1,7 @@
 package cache
 
 import (
-	"github.com/HirbodBehnam/RedditDownloaderBot/reddit"
+	"RedditDownloaderBot/pkg/reddit"
 	"github.com/go-faster/errors"
 )
 

@@ -1,4 +1,4 @@
-module github.com/HirbodBehnam/RedditDownloaderBot
+module RedditDownloaderBot
 
 go 1.18
 

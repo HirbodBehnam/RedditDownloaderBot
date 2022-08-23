@@ -1,11 +1,11 @@
 package bot
 
 import (
+	"RedditDownloaderBot/internal/cache"
+	"RedditDownloaderBot/pkg/common"
+	"RedditDownloaderBot/pkg/reddit"
+	"RedditDownloaderBot/pkg/util"
 	"encoding/json"
-	"github.com/HirbodBehnam/RedditDownloaderBot/cache"
-	"github.com/HirbodBehnam/RedditDownloaderBot/config"
-	"github.com/HirbodBehnam/RedditDownloaderBot/reddit"
-	"github.com/HirbodBehnam/RedditDownloaderBot/util"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/google/uuid"
 	"log"
@@ -46,7 +46,7 @@ func RunBot(token string, allowedUsers AllowedUsers) {
 			case "start":
 				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Hello and welcome!\nJust send me the link of the post to download it for you."))
 			case "about":
-				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Reddit Downloader Bot v"+config.Version+"\nBy Hirbod Behnam\nSource: https://github.com/HirbodBehnam/RedditDownloaderBot"))
+				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Reddit Downloader Bot v"+common.Version+"\nBy Hirbod Behnam\nSource: https://github.com/HirbodBehnam/RedditDownloaderBot"))
 			case "help":
 				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Just send me the link of the reddit post or comment. If it's text, I will send the text of the post. If it's a photo or video, I will send the it with the title as caption."))
 			default:

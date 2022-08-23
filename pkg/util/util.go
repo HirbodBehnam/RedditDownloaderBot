@@ -1,9 +1,9 @@
 package util
 
 import (
+	"RedditDownloaderBot/pkg/common"
 	"encoding/base64"
 	"encoding/json"
-	"github.com/HirbodBehnam/RedditDownloaderBot/config"
 	"github.com/google/uuid"
 	"log"
 	"net/url"
@@ -22,7 +22,7 @@ func IsUrl(str string) bool {
 
 // FollowRedirect follows a page's redirect and returns the final URL
 func FollowRedirect(u string) (string, error) {
-	resp, err := config.GlobalHttpClient.Head(u)
+	resp, err := common.GlobalHttpClient.Head(u)
 	if err != nil {
 		return "", err
 	}

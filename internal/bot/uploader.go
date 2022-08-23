@@ -1,8 +1,8 @@
 package bot
 
 import (
-	"github.com/HirbodBehnam/RedditDownloaderBot/reddit"
-	"github.com/HirbodBehnam/RedditDownloaderBot/util"
+	"RedditDownloaderBot/pkg/reddit"
+	"RedditDownloaderBot/pkg/util"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"log"
 	"os"

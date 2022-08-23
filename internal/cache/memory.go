@@ -1,7 +1,7 @@
 package cache
 
 import (
-	"github.com/HirbodBehnam/RedditDownloaderBot/reddit"
+	"RedditDownloaderBot/pkg/reddit"
 	"sync"
 	"time"
 )
@@ -85,13 +85,13 @@ func NewMemoryCache(ttl, cleanUpInterval time.Duration) *MemoryCache {
 // cleanUpInterval seconds or MemoryCache.cleanUpDoneChannel is closed
 func (c *MemoryCache) cleanUp(ttl, cleanUpInterval time.Duration) {
 	cleanUpWait := time.NewTicker(cleanUpInterval)
-	defer cleanUpWait.Stop()
 	for {
 		select {
 		case <-cleanUpWait.C:
 			c.albumCache.cleanUp(ttl)
 			c.mediaCache.cleanUp(ttl)
 		case <-c.cleanUpDoneChannel:
+			cleanUpWait.Stop()
 			return
 		}
 	}

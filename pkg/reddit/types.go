@@ -5,8 +5,13 @@ const DownloadAudioQuality = "Audio"
 
 // FetchError is an error type which might be returned from StartFetch function
 type FetchError struct {
+	// NormalError is the real error message which has caused the error. This can be printed to stdout for
+	// debugging, but it may contain sensitive data. So it should not be sent to users.
+	// There is a special case which this string is empty. That means that there was a problem with user's
+	// request, and we should not log anything.
 	NormalError string
-	BotError    string
+	// BotError on the other hand, must be sent to user. It should never be empty.
+	BotError string
 }
 
 // Error returns the normal error which might contain sensitive information

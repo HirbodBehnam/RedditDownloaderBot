@@ -1,10 +1,10 @@
 package reddit
 
 import (
+	"RedditDownloaderBot/pkg/common"
+	"RedditDownloaderBot/pkg/reddit/helpers"
+	"RedditDownloaderBot/pkg/util"
 	"fmt"
-	"github.com/HirbodBehnam/RedditDownloaderBot/config"
-	"github.com/HirbodBehnam/RedditDownloaderBot/reddit/helpers"
-	"github.com/HirbodBehnam/RedditDownloaderBot/util"
 	"github.com/PuerkitoBio/goquery"
 	"html"
 	"log"
@@ -232,7 +232,7 @@ func (o *Oauth) StartFetch(postUrl string) (fetchResult interface{}, fetchError 
 					}
 				case "streamable.com": // example: https://streamable.com/u2jzoo
 					// Download the source at first
-					source, err := config.GlobalHttpClient.Get(root["url"].(string))
+					source, err := common.GlobalHttpClient.Get(root["url"].(string))
 					if err != nil {
 						return nil, &FetchError{
 							NormalError: "cannot get the source code of " + root["url"].(string) + ": " + err.Error(),
@@ -276,7 +276,7 @@ func (o *Oauth) StartFetch(postUrl string) (fetchResult interface{}, fetchError 
 					// api for redgifs is in https://i.redgifs.com/docs/index.html
 					infoUrl := fmt.Sprintf("https://api.redgifs.com/v2/gifs/%s", redgifsid)
 
-					source, err := config.GlobalHttpClient.Get(infoUrl)
+					source, err := common.GlobalHttpClient.Get(infoUrl)
 					if err != nil {
 						return nil, &FetchError{
 							NormalError: "cannot get redgifs info " + infoUrl + ": " + err.Error(),

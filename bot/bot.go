@@ -9,6 +9,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/google/uuid"
 	"log"
+	"strings"
 )
 
 // RunBot runs the bot with the specified token
@@ -112,14 +113,14 @@ func fetchPostDetailsAndSend(text string, chatID int64, messageID int) {
 			msg.ReplyMarkup = createVideoInlineKeyboard(idString, data)
 		}
 		// Insert the id in cache
-		err := CallbackCache.SetMediaCache(idString, cache.CallbackDataCached(CallbackDataCached{
+		err := CallbackCache.SetMediaCache(idString, cache.CallbackDataCached{
 			Links:         data.Medias.ToLinkMap(),
 			Title:         data.Title,
 			ThumbnailLink: data.ThumbnailLink,
 			Type:          data.Type,
 			Duration:      data.Duration,
 			AudioIndex:    audioIndex,
-		}))
+		})
 		if err != nil {
 			log.Println("Cannot set the media cache in database:", err)
 		}
@@ -166,7 +167,7 @@ func handleCallback(dataString string, chatID int64, msgId int) {
 	bot.Send(tgbotapi.NewDeleteMessage(chatID, msgId))
 	// Parse the data
 	var data CallbackButtonData
-	err := json.Unmarshal(util.StringToByte(dataString), &data)
+	err := json.NewDecoder(strings.NewReader(dataString)).Decode(&data)
 	if err != nil {
 		bot.Send(tgbotapi.NewMessage(chatID, "Broken callback data"))
 		return

@@ -6,7 +6,6 @@ import (
 	"github.com/HirbodBehnam/RedditDownloaderBot/util"
 	"github.com/go-faster/errors"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -34,7 +33,7 @@ func DownloadPhoto(link string) (*os.File, error) {
 		fileName = u.Path[1:]
 	}
 	// Generate a temp file
-	tmpFile, err := ioutil.TempFile("", "*."+fileName)
+	tmpFile, err := os.CreateTemp("", "*."+fileName)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot create temp file")
 	}
@@ -52,7 +51,7 @@ func DownloadPhoto(link string) (*os.File, error) {
 // If necessary, it will merge the audio and video with ffmpeg
 func DownloadVideo(vidUrl string) (audioUrl string, videoFile *os.File, err error) {
 	// Download the video in a temp file
-	videoFile, err = ioutil.TempFile("", "*.mp4")
+	videoFile, err = os.CreateTemp("", "*.mp4")
 	if err != nil {
 		err = errors.Wrap(err, "cannot create a temp file for video")
 		return
@@ -71,7 +70,7 @@ func DownloadVideo(vidUrl string) (audioUrl string, videoFile *os.File, err erro
 	}
 	// Otherwise, search for an audio file
 	audioUrl, hasAudio := HasAudio(vidUrl)
-	audFile, err := ioutil.TempFile("", "*.mp4")
+	audFile, err := os.CreateTemp("", "*.mp4")
 	if err != nil {
 		err = errors.Wrap(err, "cannot create a temp file for audio")
 		return
@@ -93,7 +92,7 @@ func DownloadVideo(vidUrl string) (audioUrl string, videoFile *os.File, err erro
 	if hasAudio {
 		var finalFile *os.File
 		// Convert
-		finalFile, err = ioutil.TempFile("", "*.mp4")
+		finalFile, err = os.CreateTemp("", "*.mp4")
 		if err != nil {
 			err = errors.Wrap(err, "cannot create a temp file for final video")
 			return
@@ -127,7 +126,7 @@ func DownloadVideo(vidUrl string) (audioUrl string, videoFile *os.File, err erro
 
 // DownloadGif downloads a gif from reddit
 func DownloadGif(link string) (*os.File, error) {
-	tmpFile, err := ioutil.TempFile("", "*.mp4")
+	tmpFile, err := os.CreateTemp("", "*.mp4")
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +141,7 @@ func DownloadGif(link string) (*os.File, error) {
 
 // DownloadThumbnail is basically DownloadPhoto but without the filename
 func DownloadThumbnail(link string) (*os.File, error) {
-	tmpFile, err := ioutil.TempFile("", "*.jpg")
+	tmpFile, err := os.CreateTemp("", "*.jpg")
 	if err != nil {
 		log.Println("Cannot create temp file for thumbnail:", err)
 		return nil, err
@@ -160,7 +159,7 @@ func DownloadThumbnail(link string) (*os.File, error) {
 
 // DownloadAudio simply downloads an audio file from reddit via direct link
 func DownloadAudio(audioUrl string) (*os.File, error) {
-	tmpFile, err := ioutil.TempFile("", "*.m4a")
+	tmpFile, err := os.CreateTemp("", "*.m4a")
 	if err != nil {
 		log.Println("Cannot create temp file for audio:", err)
 		return nil, err

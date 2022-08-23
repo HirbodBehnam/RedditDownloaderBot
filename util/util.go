@@ -9,7 +9,6 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
-	"reflect"
 	"strconv"
 	"unsafe"
 )
@@ -57,14 +56,6 @@ func UUIDToBase64(id uuid.UUID) string {
 func ByteToString(b []byte) string {
 	// From strings.Builder.String()
 	return *(*string)(unsafe.Pointer(&b))
-}
-
-// StringToByte converts a string to byte array without copy
-// Please be really fucking careful with this function
-// DO NOT APPEND ANYTHING TO UNDERLYING SLICE AND DO NOT CHANGE IT
-// Use this function to call function like unmarshal text manually
-func StringToByte(s string) []byte {
-	return unsafe.Slice((*byte)(unsafe.Pointer((*reflect.StringHeader)(unsafe.Pointer(&s)).Data)), len(s))
 }
 
 // ToJsonString converts an object to json string

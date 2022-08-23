@@ -358,6 +358,38 @@ func TestGetPostId(t *testing.T) {
 			ExpectedIsComment: false,
 			ExpectedError:     "Cannot parse reddit the url. Does your text contain a reddit url?",
 		},
+		{
+			TestName:          "Short Reddit Url",
+			Url:               "https://www.reddit.com/wul62b",
+			NeedsInternet:     false,
+			ExpectedID:        "wul62b",
+			ExpectedIsComment: false,
+			ExpectedError:     "",
+		},
+		{
+			TestName:          "Old Post",
+			Url:               "https://old.reddit.com/r/dankmemes/comments/kmi4d3/invest_in_sliding_gif_memes/?utm_medium=android_app&utm_source=share",
+			NeedsInternet:     false,
+			ExpectedID:        "kmi4d3",
+			ExpectedIsComment: false,
+			ExpectedError:     "",
+		},
+		{
+			TestName:          "Normal Post 2",
+			Url:               "https://reddit.com/r/dankmemes/comments/kmi4d3/invest_in_sliding_gif_memes/?utm_medium=android_app&utm_source=share",
+			NeedsInternet:     false,
+			ExpectedID:        "kmi4d3",
+			ExpectedIsComment: false,
+			ExpectedError:     "",
+		},
+		{
+			TestName:          "Normal Post No Transport",
+			Url:               "reddit.com/r/dankmemes/comments/kmi4d3/invest_in_sliding_gif_memes/?utm_medium=android_app&utm_source=share",
+			NeedsInternet:     false,
+			ExpectedID:        "kmi4d3",
+			ExpectedIsComment: false,
+			ExpectedError:     "",
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.TestName, func(t *testing.T) {

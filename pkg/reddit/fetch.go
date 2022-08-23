@@ -391,8 +391,8 @@ func getPostID(postUrl string) (postID string, isComment bool, err *FetchError) 
 		return
 	}
 	split := strings.Split(u.Path, "/")
-	if len(split) == 1 { // www.reddit.com/x
-		return split[0], false, nil
+	if len(split) == 2 { // www.reddit.com/x
+		return split[1], false, nil
 	}
 	if len(split) < 5 {
 		err = &FetchError{

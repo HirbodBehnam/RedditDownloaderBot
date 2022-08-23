@@ -336,7 +336,7 @@ func (o *Oauth) StartFetch(postUrl string) (fetchResult interface{}, fetchError 
 	} else { // text or gallery
 		if gData, ok := root["gallery_data"]; ok { // gallery
 			if data, ok := root["media_metadata"]; ok {
-				return getGalleryData(data.(map[string]interface{}), gData.(map[string]interface{})["items"].([]interface{}))
+				return getGalleryData(data.(map[string]interface{}), gData.(map[string]interface{})["items"].([]interface{})), nil
 			}
 		}
 		// Text
@@ -385,7 +385,7 @@ func getPostID(postUrl string) (postID string, isComment bool, err *FetchError) 
 	}
 	if u == nil {
 		err = &FetchError{
-			NormalError: "invalid url: no url",
+			NormalError: "",
 			BotError:    "Cannot parse reddit the url. Does your text contain a reddit url?",
 		}
 		return
@@ -396,7 +396,7 @@ func getPostID(postUrl string) (postID string, isComment bool, err *FetchError) 
 	}
 	if len(split) < 5 {
 		err = &FetchError{
-			NormalError: "invalid url: too small",
+			NormalError: "",
 			BotError:    "Cannot parse reddit the url. Does your text contain a reddit url?",
 		}
 		return
@@ -408,7 +408,7 @@ func getPostID(postUrl string) (postID string, isComment bool, err *FetchError) 
 }
 
 // getGalleryData extracts the gallery data from gallery json
-func getGalleryData(files map[string]interface{}, galleryDataItems []interface{}) (FetchResultAlbum, *FetchError) {
+func getGalleryData(files map[string]interface{}, galleryDataItems []interface{}) FetchResultAlbum {
 	album := make([]FetchResultAlbumEntry, 0, len(galleryDataItems))
 	for _, data := range galleryDataItems {
 		galleryRoot := files[data.(map[string]interface{})["media_id"].(string)]
@@ -488,7 +488,7 @@ func getGalleryData(files map[string]interface{}, galleryDataItems []interface{}
 			log.Println("Unknown type in send gallery:", dataType)
 		}
 	}
-	return FetchResultAlbum{album}, nil
+	return FetchResultAlbum{album}
 }
 
 // extractPhotoGifQualities creates an array of FetchResultMediaEntry which are the qualities

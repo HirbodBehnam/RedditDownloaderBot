@@ -80,7 +80,7 @@ type FetchResultMedia struct {
 // HasAudio checks if a video does have audio
 // It returns false if FetchResultMedia.Type is not FetchResultMediaTypeVideo
 // index will be -1 if it doesn't have audio
-func (f *FetchResultMedia) HasAudio() (index int, has bool) {
+func (f FetchResultMedia) HasAudio() (index int, has bool) {
 	if f.Type != FetchResultMediaTypeVideo {
 		return -1, false
 	}

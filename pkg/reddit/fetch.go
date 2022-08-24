@@ -58,20 +58,7 @@ func (o *Oauth) StartFetch(postUrl string) (fetchResult interface{}, fetchError 
 				BotError:    "Cannot download comment",
 			}
 		}
-		// Check gif comments
-		text := root["data"].(map[string]interface{})["children"].([]interface{})[0].(map[string]interface{})["data"].(map[string]interface{})["body"].(string)
-		if matches := giphyCommentRegex.FindStringSubmatch(text); len(matches) == 2 {
-			return FetchResultMedia{
-				Medias: []FetchResultMediaEntry{{
-					Link:    fmt.Sprintf("https://i.giphy.com/media/%s/giphy.gif", matches[1]),
-					Quality: "giphy",
-				}},
-				Type:  FetchResultMediaTypeGif,
-				Title: strings.ReplaceAll(text, matches[0], ""),
-			}, nil
-		}
-		// Normal comment
-		return FetchResultComment{text}, nil
+		return getCommentFromRoot(root), nil
 	}
 	// Now download the json
 	root, err := o.GetPost(postId)
@@ -82,6 +69,96 @@ func (o *Oauth) StartFetch(postUrl string) (fetchResult interface{}, fetchError 
 		}
 		return
 	}
+	return getPost(postUrl, root)
+}
+
+func getPostID(postUrl string) (postID string, isComment bool, err *FetchError) {
+	var u *url.URL = nil
+	// Check all lines for links. In new reddit update, sharing via Telegram adds the post title at its first
+	lines := strings.Split(postUrl, "\n")
+	for _, line := range lines {
+		if !strings.HasPrefix(line, "http://") && !strings.HasPrefix(line, "https://") {
+			line = "https://" + line
+		}
+		u, _ = url.Parse(line)
+		if u == nil {
+			continue
+		}
+		if u.Host == "redd.it" {
+			if len(u.Path) <= 1 {
+				continue
+			}
+			p := u.Path[1:] // remove the first /
+			if strings.Contains(p, "/") {
+				continue
+			}
+			// redd.it links are never comments
+			return p, false, nil
+		}
+		if u.Host == "v.redd.it" {
+			followedUrl, err := util.FollowRedirect(line)
+			if err != nil {
+				continue
+			}
+			u, _ = url.Parse(followedUrl)
+		}
+		if u.Host == "www.reddit.com" || u.Host == "reddit.com" || u.Host == "old.reddit.com" {
+			postUrl = line
+			break
+		}
+		u = nil // this is for last loop. If u is nil after that final loop, it means that there is no reddit url in text
+	}
+	if u == nil {
+		err = &FetchError{
+			NormalError: "",
+			BotError:    "Cannot parse reddit the url. Does your text contain a reddit url?",
+		}
+		return
+	}
+	split := strings.Split(u.Path, "/")
+	if len(split) == 2 { // www.reddit.com/x
+		return split[1], false, nil
+	}
+	if len(split) < 5 {
+		err = &FetchError{
+			NormalError: "",
+			BotError:    "Cannot parse reddit the url. Does your text contain a reddit url?",
+		}
+		return
+	}
+	if len(split) >= 7 && split[6] != "" {
+		return split[6], true, nil
+	}
+	return split[4], false, nil
+}
+
+// getCommentFromRoot gets the comment content from root of the json API.
+// The result is either a FetchResultMedia with gif type or FetchResultComment
+func getCommentFromRoot(root map[string]interface{}) interface{} {
+	// Check gif comments
+	text := root["data"].(map[string]interface{})["children"].([]interface{})[0].(map[string]interface{})["data"].(map[string]interface{})["body"].(string)
+	if matches := giphyCommentRegex.FindStringSubmatch(text); len(matches) == 2 {
+		return FetchResultMedia{
+			Medias: []FetchResultMediaEntry{{
+				Link:    fmt.Sprintf("https://i.giphy.com/media/%s/giphy.gif", matches[1]),
+				Quality: "giphy",
+			}},
+			Type:  FetchResultMediaTypeGif,
+			Title: strings.ReplaceAll(text, matches[0], ""),
+		}
+	}
+	// Normal comment
+	return FetchResultComment{text}
+}
+
+// getPost will get the post from the parsed root API.
+// The result is one of these types:
+// FetchResultText
+// FetchResultMedia
+// FetchResultAlbum
+//
+// This function is seperated from Oauth.StartFetch to write tests for it
+func getPost(postUrl string, root map[string]interface{}) (fetchResult interface{}, fetchError *FetchError) {
 	// Get post type
 	// To do so, I check data->children[0]->data->post_hint
 	{
@@ -160,8 +237,8 @@ func (o *Oauth) StartFetch(postUrl string) (fetchResult interface{}, fetchError 
 				}
 			} else {
 				result.Type = FetchResultMediaTypePhoto
-				// Send the original file as well if it's on reddit
-				if link, ok := root["url"].(string); ok && strings.HasPrefix(link, "https://i.redd.it/") {
+				// Send the original file as well if it's on reddit or imgur
+				if link, ok := root["url"].(string); ok && (strings.HasPrefix(link, "https://i.redd.it/") || strings.HasPrefix(link, "https://i.imgur.com/")) {
 					result.Medias = []FetchResultMediaEntry{
 						{
 							link,
@@ -174,7 +251,7 @@ func (o *Oauth) StartFetch(postUrl string) (fetchResult interface{}, fetchError 
 			return result, nil
 		case "link": // link
 			u := root["url"].(string)
-			if u[len(u)-4:] == "gifv" && strings.HasPrefix(u, "https://i.imgur.com") { // imgur gif
+			if strings.HasSuffix(u, ".gifv") && strings.HasPrefix(u, "https://i.imgur.com") { // imgur gif
 				return FetchResultMedia{
 					Medias: []FetchResultMediaEntry{{
 						Link:    u[:len(u)-4] + "mp4",
@@ -268,8 +345,8 @@ func (o *Oauth) StartFetch(postUrl string) (fetchResult interface{}, fetchError 
 					redgifsid := helpers.GetRedGifsID(root["url"].(string))
 					if redgifsid == "" {
 						return nil, &FetchError{
-							NormalError: "cannot get redgifs id  from " + root["url"].(string) + ": " + err.Error(),
-							BotError:    "Cannot get redgifs id  from  " + root["url"].(string),
+							NormalError: "cannot get redgifs id from " + root["url"].(string),
+							BotError:    "Cannot get redgifs id from  " + root["url"].(string),
 						}
 					}
 
@@ -347,66 +424,6 @@ func (o *Oauth) StartFetch(postUrl string) (fetchResult interface{}, fetchError 
 	}
 }
 
-func getPostID(postUrl string) (postID string, isComment bool, err *FetchError) {
-	var u *url.URL = nil
-	// Check all lines for links. In new reddit update, sharing via Telegram adds the post title at its first
-	lines := strings.Split(postUrl, "\n")
-	for _, line := range lines {
-		if !strings.HasPrefix(line, "http://") && !strings.HasPrefix(line, "https://") {
-			line = "https://" + line
-		}
-		u, _ = url.Parse(line)
-		if u == nil {
-			continue
-		}
-		if u.Host == "redd.it" {
-			if len(u.Path) <= 1 {
-				continue
-			}
-			p := u.Path[1:] // remove the first /
-			if strings.Contains(p, "/") {
-				continue
-			}
-			// redd.it links are never comments
-			return p, false, nil
-		}
-		if u.Host == "v.redd.it" {
-			followedUrl, err := util.FollowRedirect(line)
-			if err != nil {
-				continue
-			}
-			u, _ = url.Parse(followedUrl)
-		}
-		if u.Host == "www.reddit.com" || u.Host == "reddit.com" || u.Host == "old.reddit.com" {
-			postUrl = line
-			break
-		}
-		u = nil // this is for last loop. If u is nil after that final loop, it means that there is no reddit url in text
-	}
-	if u == nil {
-		err = &FetchError{
-			NormalError: "",
-			BotError:    "Cannot parse reddit the url. Does your text contain a reddit url?",
-		}
-		return
-	}
-	split := strings.Split(u.Path, "/")
-	if len(split) == 2 { // www.reddit.com/x
-		return split[1], false, nil
-	}
-	if len(split) < 5 {
-		err = &FetchError{
-			NormalError: "",
-			BotError:    "Cannot parse reddit the url. Does your text contain a reddit url?",
-		}
-		return
-	}
-	if len(split) >= 7 && split[6] != "" {
-		return split[6], true, nil
-	}
-	return split[4], false, nil
-}
-
 // getGalleryData extracts the gallery data from gallery json
 func getGalleryData(files map[string]interface{}, galleryDataItems []interface{}) FetchResultAlbum {
 	album := make([]FetchResultAlbumEntry, 0, len(galleryDataItems))
@@ -421,9 +438,7 @@ func getGalleryData(files map[string]interface{}, galleryDataItems []interface{}
 		// Check the type
 		switch dataType {
 		case "Image":
-			link := image["s"].(map[string]interface{})["u"].(string)
-			// For some reasons, I have to remove all "amp;" from the url in order to make this work
-			link = strings.ReplaceAll(link, "amp;", "")
+			link := html.UnescapeString(image["s"].(map[string]interface{})["u"].(string))
 			// Get the caption
 			var caption string
 			if c, ok := data.(map[string]interface{})["caption"]; ok {
@@ -439,8 +454,7 @@ func getGalleryData(files map[string]interface{}, galleryDataItems []interface{}
 				Type:    FetchResultMediaTypePhoto,
 			})
 		case "AnimatedImage":
-			link := image["s"].(map[string]interface{})["mp4"].(string)
-			link = strings.ReplaceAll(link, "amp;", "")
+			link := html.UnescapeString(image["s"].(map[string]interface{})["mp4"].(string))
 			// Get the caption
 			var caption string
 			if c, ok := data.(map[string]interface{})["caption"]; ok {

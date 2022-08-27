@@ -3,6 +3,7 @@ package bot
 import (
 	"RedditDownloaderBot/pkg/reddit"
 	"RedditDownloaderBot/pkg/util"
+	"github.com/go-faster/errors"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"log"
 	"os"
@@ -65,8 +66,12 @@ func handleVideoUpload(vidUrl, title, thumbnailUrl string, duration int, chatID 
 	// Download the gif
 	audioUrl, tmpFile, err := reddit.DownloadVideo(vidUrl)
 	if err != nil {
-		log.Println("Cannot download file", vidUrl, ":", err)
-		bot.Send(tgbotapi.NewMessage(chatID, "Can't download file.\n"+generateVideoUrlsMessage(vidUrl, audioUrl)))
+		if errors.Is(err, reddit.FileTooBigError) {
+			bot.Send(tgbotapi.NewMessage(chatID, "Can't download file due to big size.\n"+generateVideoUrlsMessage(vidUrl, audioUrl)))
+		} else {
+			log.Println("Cannot download file", vidUrl, ":", err)
+			bot.Send(tgbotapi.NewMessage(chatID, "Can't download file.\n"+generateVideoUrlsMessage(vidUrl, audioUrl)))
+		}
 		return
 	}
 	defer func() { // Cleanup

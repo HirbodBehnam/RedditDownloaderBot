@@ -61,6 +61,11 @@ export BOT_TOKEN=1234567:4TT8bAc8GHUspu3ERYn-KGcvsvGB9u_n4ddy
 ./bot
 ```
 
+#### Docker
+
+If you want, you can run this bot using docker compose. To do so, edit `docker-compose.yml` and change the environment
+variables needed for bot. Then use `docker compose up` to run the bot.
+
 #### Optional Settings
 
 ##### Allowed Users

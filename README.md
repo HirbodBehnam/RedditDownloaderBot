@@ -40,7 +40,7 @@ Then download and build this project:
 ```bash
 git clone https://github.com/HirbodBehnam/RedditDownloaderBot
 cd RedditDownloaderBot
-go build
+go build ./cmd/RedditDownloaderBot/
 ```
 
 ### Reddit Token
@@ -58,7 +58,7 @@ For running, you have to set the environmental variables like this:
 export CLIENT_ID=p-jcoLKBynTLew
 export CLIENT_SECRET=gko_LXELoV07ZBNUXrvWZfzE3aI
 export BOT_TOKEN=1234567:4TT8bAc8GHUspu3ERYn-KGcvsvGB9u_n4ddy
-./bot
+./RedditDownloaderBot
 ```
 
 #### Docker

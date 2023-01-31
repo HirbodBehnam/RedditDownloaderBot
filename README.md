@@ -82,9 +82,9 @@ Your token will look something like this:
 Now that you have the necessary tokens, edit the docker-compose.yml file and set the environment variables as such:
 
 ```bash
-CLIENT_ID=[Reddit client ID]
-CLIENT_SECRET=[Reddit client secret]
-BOT_TOKEN=[Telegram bot token]
+CLIENT_ID: "Reddit client ID"
+CLIENT_SECRET: "Reddit client secret"
+BOT_TOKEN: "Telegram bot token"
 ```
 
 You can run the bot using docker-compose. In case you don’t have docker-compose installed, follow the steps below.

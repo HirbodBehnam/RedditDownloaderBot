@@ -45,7 +45,7 @@ Table of Contents
 
 ## Build
 
-First, install [FFmpeg](https://www.ffmpeg.org). On Debian or Ubuntu, simply run `apt install ffmpeg`. Then, clone and build the project using the following steps:
+First, install [FFmpeg](https://www.ffmpeg.org). On Debian or Ubuntu, simply run `apt install ffmpeg`. Then, clone and build the project using the following steps.
 
 ```bash
 git clone https://github.com/mcsaeid/RedditDownloaderBot
@@ -79,7 +79,7 @@ Your token will look something like this:
 
 ## Run
 
-Now that you have the necessary tokens, edit `docker-compose.yml` and set the environment variables as such:
+Now that you have the necessary tokens, edit the docker-compose.yml file and set the environment variables as such:
 
 ```bash
 CLIENT_ID=[Reddit client ID]

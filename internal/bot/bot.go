@@ -37,20 +37,20 @@ func RunBot(token string, allowedUsers AllowedUsers) {
 		}
 		// Only text messages are allowed
 		if update.Message.Text == "" {
-			bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Please send the reddit post link to bot"))
+			bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Please send a Reddit post link."))
 			continue
 		}
 		// Check if the message is command
 		if update.Message.IsCommand() {
 			switch update.Message.Command() {
 			case "start":
-				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Hello and welcome!\nJust send me the link of the post to download it for you."))
+				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Hey!\nJust send me a post or comment, and I’ll download it for you."))
 			case "about":
-				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Reddit Downloader Bot v"+common.Version+"\nBy Hirbod Behnam\nSource: https://github.com/HirbodBehnam/RedditDownloaderBot"))
+				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Reddit Downloader Bot v"+common.Version+"\nBy Hirbod Behnam\nSource: https://github.com/mcsaeid/RedditDownloaderBot"))
 			case "help":
-				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Just send me the link of the reddit post or comment. If it's text, I will send the text of the post. If it's a photo or video, I will send the it with the title as caption."))
+				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "You can send me Reddit posts or comments. If it’s text only, I’ll send a text message. If it’s an image or video, I’ll send it with the title as caption."))
 			default:
-				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Sorry this command is not recognized; Try /help"))
+				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Sorry. I don’t recognize this command. Try /help."))
 			}
 			continue
 		}
@@ -101,7 +101,7 @@ func fetchPostDetailsAndSend(text string, chatID int64, messageID int) {
 			}
 		}
 		// Allow the user to select quality
-		msg.Text = "Please select the quality"
+		msg.Text = "Please select the quality."
 		idString := util.UUIDToBase64(uuid.New())
 		audioIndex, _ := data.HasAudio()
 		switch data.Type {
@@ -130,7 +130,7 @@ func fetchPostDetailsAndSend(text string, chatID int64, messageID int) {
 		if err != nil {
 			log.Println("Cannot set the album cache in database:", err)
 		}
-		msg.Text = "Download album as media or files?"
+		msg.Text = "Download gallery as media or file?"
 		msg.ReplyMarkup = tgbotapi.InlineKeyboardMarkup{
 			InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{{
 				tgbotapi.NewInlineKeyboardButtonData("Media", CallbackButtonData{
@@ -183,21 +183,21 @@ func handleCallback(dataString string, chatID int64, msgId int) {
 			return
 		} else if err == cache.NotFoundErr {
 			// It does not exists...
-			bot.Send(tgbotapi.NewMessage(chatID, "Please resend the link to bot"))
+			bot.Send(tgbotapi.NewMessage(chatID, "Please resend the link."))
 			return
 		}
 		// Fall to report internal error
 	}
 	// Check other errors
 	if err != nil {
-		log.Println("Cannot get callback id from database:", err)
+		log.Println("Cannot get callback ID from database:", err)
 		bot.Send(tgbotapi.NewMessage(chatID, "Internal error"))
 		return
 	}
 	// Check the link
 	link, exists := cachedData.Links[data.LinkKey]
 	if !exists {
-		bot.Send(tgbotapi.NewMessage(chatID, "Please resend the link to bot"))
+		bot.Send(tgbotapi.NewMessage(chatID, "Please resend the link."))
 		return
 	}
 	// Check the media type

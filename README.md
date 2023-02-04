@@ -100,10 +100,10 @@ Lastly, run `docker-compose up --build` inside the RedditDownloaderBot directory
 
 ## Allowed Users
 
-You can configure the bot to allow access to only a group of users. This is useful for deploying private bots. To do so, you need to create a whitelist that consists of Telegram user IDs. You can obtain user IDs using [IDBot](https://t.me/myidbot). Next, create the environment variable `ALLOWED_USERS` and set its value to user IDs, separated by a comma.
+You can configure the bot to allow access to only a group of users. This is useful for deploying private bots. To do so, you need to create a whitelist that consists of Telegram user IDs. You can obtain user IDs using [GetIDs Bot](https://t.me/getidsbot). Next, create the environment variable `ALLOWED_USERS` and set its value to user IDs, separated by a comma.
 
 ```bash
-ALLOWED_USERS=1,2,3
+ALLOWED_USERS: "1,2,3"
 ```
 
 ## Disable NSFW Content
@@ -111,5 +111,5 @@ ALLOWED_USERS=1,2,3
 You can keep the bot from downloading NSFW posts by setting the following environment variable:
 
 ```bash
-DENY_NSFW=true
+DENY_NSFW: "true"
 ```

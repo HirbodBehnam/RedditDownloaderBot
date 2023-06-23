@@ -61,7 +61,6 @@ func RunBot(token string, allowedUsers AllowedUsers) {
 
 // fetchPostDetailsAndSend gets the basic info about the post being sent to us
 func fetchPostDetailsAndSend(text string, chatID int64, messageID int) {
-	log.Println("Parmida message text:",text)
 	result, fetchErr := RedditOauth.StartFetch(text)
 	if fetchErr != nil {
 		msg := tgbotapi.NewMessage(chatID, fetchErr.BotError)

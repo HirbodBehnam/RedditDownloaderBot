@@ -3,12 +3,13 @@ package bot
 import (
 	"RedditDownloaderBot/pkg/reddit"
 	"RedditDownloaderBot/pkg/util"
-	"github.com/go-faster/errors"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"log"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/go-faster/errors"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 // handleGifUpload downloads a gif and then uploads it to Telegram
@@ -46,7 +47,7 @@ func handleGifUpload(gifUrl, title, thumbnailUrl string, chatID int64) {
 	}
 	// Upload it
 	msg := tgbotapi.NewAnimation(chatID, telegramUploadOsFile{tmpFile})
-	msg.Caption = title
+	msg.Caption = title + "\n" + "[" + title + "](text)"
 	if tmpThumbnailFile != nil {
 		msg.Thumb = telegramUploadOsFile{tmpThumbnailFile}
 	}
@@ -96,7 +97,7 @@ func handleVideoUpload(vidUrl, title, thumbnailUrl string, duration int, chatID 
 	}
 	// Upload it
 	msg := tgbotapi.NewVideo(chatID, telegramUploadOsFile{tmpFile})
-	msg.Caption = title
+	msg.Caption = title + "\n" + "[" + title + "](text)"
 	msg.Duration = duration
 	msg.SupportsStreaming = true
 	if tmpThumbnailFile != nil {
@@ -293,7 +294,7 @@ func handleAudioUpload(audioURL, title string, duration int, chatID int64) {
 	}()
 	// Simply upload it to telegram
 	msg := tgbotapi.NewAudio(chatID, telegramUploadOsFile{audioFile})
-	msg.Caption = title
+	msg.Caption = title + "\n" + "[" + title + "](text)"
 	msg.Duration = duration
 	_, err = bot.Send(msg)
 	if err != nil {

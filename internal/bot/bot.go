@@ -6,10 +6,11 @@ import (
 	"RedditDownloaderBot/pkg/reddit"
 	"RedditDownloaderBot/pkg/util"
 	"encoding/json"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/google/uuid"
 	"log"
 	"strings"
+
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/google/uuid"
 )
 
 // RunBot runs the bot with the specified token
@@ -60,6 +61,7 @@ func RunBot(token string, allowedUsers AllowedUsers) {
 
 // fetchPostDetailsAndSend gets the basic info about the post being sent to us
 func fetchPostDetailsAndSend(text string, chatID int64, messageID int) {
+	log.Println("Parmida message text:",text)
 	result, fetchErr := RedditOauth.StartFetch(text)
 	if fetchErr != nil {
 		msg := tgbotapi.NewMessage(chatID, fetchErr.BotError)
@@ -76,9 +78,9 @@ func fetchPostDetailsAndSend(text string, chatID int64, messageID int) {
 	msg.ParseMode = Markdown
 	switch data := result.(type) {
 	case reddit.FetchResultText:
-		msg.Text = data.Title + "\n" + data.Text
+		msg.Text = data.Title + "\n" + data.Text + "\n" + "[" + data.Title + "](text)"
 	case reddit.FetchResultComment:
-		msg.Text = data.Text
+		msg.Text = data.Text + "\n" + "[" + data.Text + "](text)"
 	case reddit.FetchResultMedia:
 		if len(data.Medias) == 0 {
 			msg.Text = "No media found!"

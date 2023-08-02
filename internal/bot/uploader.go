@@ -59,12 +59,12 @@ func handleGifUpload(gifUrl, title, thumbnailUrl string, chatID int64) {
 }
 
 // handleVideoUpload downloads a video and then uploads it to Telegram
-func handleVideoUpload(vidUrl, title, thumbnailUrl string, duration int, chatID int64) {
+func handleVideoUpload(vidUrl, audioUrl, title, thumbnailUrl string, duration int, chatID int64) {
 	// Inform the user we are doing some shit
 	stopReportChannel := statusReporter(chatID, "upload_video")
 	defer close(stopReportChannel)
 	// Download the gif
-	audioUrl, tmpFile, err := reddit.DownloadVideo(vidUrl)
+	tmpFile, err := reddit.DownloadVideo(vidUrl, audioUrl)
 	if err != nil {
 		if errors.Is(err, reddit.FileTooBigError) {
 			bot.Send(tgbotapi.NewMessage(chatID, "Can't download file due to big size.\n"+generateVideoUrlsMessage(vidUrl, audioUrl)))
@@ -223,7 +223,7 @@ func handleAlbumUpload(album reddit.FetchResultAlbum, chatID int64, asFile bool)
 				}
 			}
 		case reddit.FetchResultMediaTypeVideo:
-			_, tmpFile, err = reddit.DownloadVideo(media.Link)
+			tmpFile, err = reddit.DownloadVideo(media.Link, "") // TODO: can i do something about audio URL?
 			if err == nil {
 				if asFile {
 					uploadFile := tgbotapi.NewInputMediaDocument(telegramUploadOsFile{tmpFile})

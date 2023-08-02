@@ -11,7 +11,6 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
-	"strings"
 )
 
 // We don't download anything more than this size
@@ -49,7 +48,7 @@ func DownloadPhoto(link string) (*os.File, error) {
 
 // DownloadVideo downloads a video from reddit
 // If necessary, it will merge the audio and video with ffmpeg
-func DownloadVideo(vidUrl string) (audioUrl string, videoFile *os.File, err error) {
+func DownloadVideo(vidUrl, audioUrl string) (videoFile *os.File, err error) {
 	// Download the video in a temp file
 	videoFile, err = os.CreateTemp("", "*.mp4")
 	if err != nil {
@@ -69,7 +68,7 @@ func DownloadVideo(vidUrl string) (audioUrl string, videoFile *os.File, err erro
 		return
 	}
 	// Otherwise, search for an audio file
-	audioUrl, hasAudio := HasAudio(vidUrl)
+	hasAudio := audioUrl != ""
 	audFile, err := os.CreateTemp("", "*.mp4")
 	if err != nil {
 		err = errors.Wrap(err, "cannot create a temp file for audio")
@@ -80,13 +79,15 @@ func DownloadVideo(vidUrl string) (audioUrl string, videoFile *os.File, err erro
 		audFile.Close()
 		os.Remove(audFile.Name())
 	}()
-	if downloadToFile(audioUrl, audFile) != nil {
-		audioUrl = ""
-		hasAudio = false
+	if hasAudio {
+		if downloadToFile(audioUrl, audFile) != nil {
+			audioUrl = ""
+			hasAudio = false
+		}
 	}
 	// Check ffmpeg; If it doesn't exist, just return the video file
 	if !util.DoesFfmpegExists() {
-		return audioUrl, videoFile, nil
+		return videoFile, nil
 	}
 	// If this file has audio, convert it
 	if hasAudio {
@@ -111,7 +112,7 @@ func DownloadVideo(vidUrl string) (audioUrl string, videoFile *os.File, err erro
 			os.Remove(finalFile.Name())
 			// We don't return error here
 			err = nil
-			return audioUrl, videoFile, nil
+			return videoFile, nil
 		}
 		// If we have reached here, it means that the conversion was fine
 		// So we swap the final file with video file and delete the video file
@@ -121,7 +122,7 @@ func DownloadVideo(vidUrl string) (audioUrl string, videoFile *os.File, err erro
 	}
 	// No we can return the video file
 	err = nil // Just be safe
-	return audioUrl, videoFile, nil
+	return videoFile, nil
 }
 
 // DownloadGif downloads a gif from reddit
@@ -195,18 +196,4 @@ func downloadToFile(link string, f *os.File) error {
 	}
 	_, err = io.Copy(f, resp.Body)
 	return err
-}
-
-// HasAudio checks if a video contains audio
-func HasAudio(videoURL string) (audioURL string, hasAudio bool) {
-	// Get the audio URL
-	audioURL = videoURL[:strings.LastIndex(videoURL, "/")] // base url
-	if strings.Contains(videoURL, ".mp4") {                // new reddit api or sth idk
-		audioURL += "/DASH_audio.mp4"
-	} else { // old format
-		audioURL += "/audio"
-	}
-	// Check if it exists
-	resp, err := common.GlobalHttpClient.Head(audioURL)
-	return audioURL, err == nil && resp.StatusCode == http.StatusOK
 }

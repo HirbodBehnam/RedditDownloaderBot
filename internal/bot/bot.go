@@ -95,7 +95,7 @@ func fetchPostDetailsAndSend(text string, chatID int64, messageID int) {
 				// If the video does have an audio, ask user if they want the audio
 				if _, hasAudio := data.HasAudio(); !hasAudio {
 					// Otherwise, just download the video
-					handleVideoUpload(data.Medias[0].Link, data.Title, data.ThumbnailLink, data.Duration, chatID)
+					handleVideoUpload(data.Medias[0].Link, "", data.Title, data.ThumbnailLink, data.Duration, chatID)
 					return
 				}
 			}
@@ -210,7 +210,8 @@ func handleCallback(dataString string, chatID int64, msgId int) {
 		if data.LinkKey == cachedData.AudioIndex {
 			handleAudioUpload(link, cachedData.Title, cachedData.Duration, chatID)
 		} else {
-			handleVideoUpload(link, cachedData.Title, cachedData.ThumbnailLink, cachedData.Duration, chatID)
+			audioURL := cachedData.Links[cachedData.AudioIndex]
+			handleVideoUpload(link, audioURL, cachedData.Title, cachedData.ThumbnailLink, cachedData.Duration, chatID)
 		}
 	}
 }

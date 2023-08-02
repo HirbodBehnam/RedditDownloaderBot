@@ -7,6 +7,8 @@ import (
 	"io"
 	"net/http"
 	"regexp"
+	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -92,14 +94,14 @@ func parseDashPlaylist(r io.Reader) (AvailableMedia, error) {
 	return result, nil
 }
 
-// ParseDashPlaylistFromID will parse the dash playlist file for a video ID
-func ParseDashPlaylistFromID(vidID string) (AvailableMedia, error) {
+// ParseDashPlaylistFromID will parse the dash playlist file for a DASHPlaylist.mpd url
+func ParseDashPlaylistFromID(dashURL string) (AvailableMedia, error) {
 	// Check if vidID is empty
-	if vidID == "" {
+	if dashURL == "" {
 		return AvailableMedia{}, errors.New("empty vidID")
 	}
 	// Request the dash file
-	resp, err := common.GlobalHttpClient.Get("https://v.redd.it/" + vidID + "/DASHPlaylist.mpd")
+	resp, err := common.GlobalHttpClient.Get(dashURL)
 	if err != nil {
 		return AvailableMedia{}, errors.Wrap(err, "cannot get url")
 	}
@@ -110,4 +112,25 @@ func ParseDashPlaylistFromID(vidID string) (AvailableMedia, error) {
 	}
 	// Parse body
 	return parseDashPlaylist(resp.Body)
+}
+
+type sortableVideoQualities []AvailableVideo
+
+func (s sortableVideoQualities) Len() int {
+	return len(s)
+}
+
+func (s sortableVideoQualities) Less(i, j int) bool {
+	q1, _ := strconv.Atoi(s[i].Quality())
+	q2, _ := strconv.Atoi(s[j].Quality())
+	return q1 > q2
+}
+
+func (s sortableVideoQualities) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
+// SortVideoQualities will sort the video qualities based on their qualities
+func SortVideoQualities(videos []AvailableVideo) {
+	sort.Sort(sortableVideoQualities(videos))
 }

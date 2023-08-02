@@ -30,6 +30,31 @@ func TestVideoQuality(t *testing.T) {
 	}
 }
 
+func TestSortVideoQualities(t *testing.T) {
+	tests := []struct {
+		Name     string
+		Input    []AvailableVideo
+		Expected []AvailableVideo
+	}{
+		{
+			Name:     "all_numbers",
+			Input:    []AvailableVideo{"DASH_220.mp4", "DASH_240.mp4", "DASH_480.mp4"},
+			Expected: []AvailableVideo{"DASH_480.mp4", "DASH_240.mp4", "DASH_220.mp4"},
+		},
+		{
+			Name:     "number_and_text",
+			Input:    []AvailableVideo{"DASH_220.mp4", "DASH_240.mp4", "DASH_480.mp4", "blah"},
+			Expected: []AvailableVideo{"DASH_480.mp4", "DASH_240.mp4", "DASH_220.mp4", "blah"},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.Name, func(t *testing.T) {
+			SortVideoQualities(test.Input)
+			assert.Equal(t, test.Expected, test.Input)
+		})
+	}
+}
+
 func TestStructParser(t *testing.T) {
 	tests := []struct {
 		Name     string

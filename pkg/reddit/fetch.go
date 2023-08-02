@@ -266,7 +266,8 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 			redditVideo := root["media"].(map[string]interface{})["reddit_video"].(map[string]interface{})
 			duration, _ := redditVideo["duration"].(float64) // Do not panic if duration does not exist. Just let the Telegram handle it
 			fallbackURL := redditVideo["fallback_url"].(string)
-			qualities, err := extractVideoQualitiesByID(getVideoIDFromVReddit(fallbackURL))
+			dashURL := redditVideo["dash_url"].(string)
+			qualities, err := extractVideoQualities(dashURL)
 			if err != nil {
 				return nil, &FetchError{
 					NormalError: "cannot get qualities for video. The main url was " + postUrl + "; Error was " + err.Error(),
@@ -297,12 +298,14 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 					}
 					// Check reddit_video_preview
 					if vid, hasVid := root["preview"].(map[string]interface{})["reddit_video_preview"]; hasVid {
-						if u, hasUrl := vid.(map[string]interface{})["fallback_url"]; hasUrl {
-							qualities, err := extractVideoQualitiesByID(getVideoIDFromVReddit(u.(string)))
+						fallback, hasUrl := vid.(map[string]interface{})["fallback_url"].(string)
+						dashURL, hasDash := vid.(map[string]interface{})["dash_url"].(string)
+						if hasUrl && hasDash {
+							qualities, err := extractVideoQualities(dashURL)
 							if err != nil {
 								return nil, &FetchError{
 									NormalError: "cannot get qualities for gfycat. The main url was " + postUrl + "; Error was " + err.Error(),
-									BotError:    "Cannot get the video. Here is the direct link to gfycat:\n" + u.(string),
+									BotError:    "Cannot get the video. Here is the direct link to gfycat:\n" + fallback,
 								}
 							}
 							return FetchResultMedia{
@@ -545,35 +548,38 @@ func extractPhotoGifQualities(data map[string]interface{}) []FetchResultMediaEnt
 	return result
 }
 
-// extractVideoQualities gets all possible qualities from a main video ID
-func extractVideoQualitiesByID(vidID string) ([]FetchResultMediaEntry, error) {
+// extractVideoQualities gets all possible qualities from DASHPlaylist URL
+func extractVideoQualities(DASHPlaylistURL string) ([]FetchResultMediaEntry, error) {
 	// Get the list from dash playlist
-	qualities, err := helpers.ParseDashPlaylistFromID(vidID)
+	qualities, err := helpers.ParseDashPlaylistFromID(DASHPlaylistURL)
 	if err != nil {
 		return nil, err
 	}
+	helpers.SortVideoQualities(qualities.AvailableVideos)
+	base := getVideoVRedditBaseURL(DASHPlaylistURL)
 	// Convert the qualities
 	result := make([]FetchResultMediaEntry, 0, len(qualities.AvailableVideos)+1)
 	for _, video := range qualities.AvailableVideos {
 		result = append(result, FetchResultMediaEntry{
-			Link:    "https://v.redd.it/" + vidID + "/" + string(video),
+			Link:    base + string(video),
 			Quality: video.Quality() + "p",
 		})
 	}
 	// Check for audio
 	if len(qualities.AvailableAudios) != 0 {
 		result = append(result, FetchResultMediaEntry{
-			Link:    "https://v.redd.it/" + vidID + "/" + string(qualities.AvailableAudios[0]),
-			Quality: "audio",
+			Link:    base + string(qualities.AvailableAudios[len(qualities.AvailableAudios)-1]),
+			Quality: DownloadAudioQuality,
 		})
 	}
 	return result, nil
 }
 
-// getVideoIDFromVReddit will get the video ID of vreddit videos from their URL which shall be like
-func getVideoIDFromVReddit(vredditURL string) string {
+// getVideoVRedditBaseURL will get the base URL of vreddit videos from their URL which shall be like
+// https://v.redd.it/3lelz0i6crx41/something and gets https://v.redd.it/3lelz0i6crx41/ from it
+func getVideoVRedditBaseURL(vredditURL string) string {
 	u, _ := url.Parse(vredditURL)
-	return strings.Split(u.Path, "/")[1]
+	return u.String()[:strings.LastIndex(u.String(), "/")+1]
 }
 
 // extractLinkAndRes extracts the data from "source":{ "url":"https://preview.redd.it/utx00pfe4cp41.jpg?auto=webp&amp;s=de4ff82478b12df6369b8d7eeca3894f094e87e1", "width":624, "height":960 } stuff

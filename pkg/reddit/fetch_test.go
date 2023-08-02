@@ -2,8 +2,6 @@ package reddit
 
 import (
 	"RedditDownloaderBot/pkg/util"
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/stretchr/testify/assert"
@@ -25,110 +23,23 @@ func TestExtractLinkAndRes(t *testing.T) {
 	assertion.Equal("https://preview.redd.it/utx00pfe4cp41.jpg?auto=webp&s=de4ff82478b12df6369b8d7eeca3894f094e87e1", url, "unexpected url")
 }
 
-func TestExtractVideoQualities(t *testing.T) {
-	id := randomId()
-	t.Run("480p With New Audio", func(t *testing.T) {
-		server := newSimpleWebserver(
-			fmt.Sprintf("/%s/DASH_480.mp4", id),
-			fmt.Sprintf("/%s/DASH_audio.mp4", id),
-		)
-		defer server.Close()
-		url := fmt.Sprintf("%s/%s/DASH_480.mp4?source=fallback", server.URL, id)
-		result := extractVideoQualities(url)
-		assert.Equal(t, []FetchResultMediaEntry{
-			{
-				Link:    fmt.Sprintf("%s/%s/DASH_480.mp4", server.URL, id),
-				Quality: "480p",
-			},
-			{
-				Link:    fmt.Sprintf("%s/%s/DASH_360.mp4", server.URL, id),
-				Quality: "360p",
-			},
-			{
-				Link:    fmt.Sprintf("%s/%s/DASH_240.mp4", server.URL, id),
-				Quality: "240p",
-			},
-			{
-				Link:    fmt.Sprintf("%s/%s/DASH_96.mp4", server.URL, id),
-				Quality: "96p",
-			},
-			{
-				Link:    fmt.Sprintf("%s/%s/DASH_audio.mp4", server.URL, id),
-				Quality: DownloadAudioQuality,
-			},
-		}, result)
-	})
-	t.Run("480p With Old Audio", func(t *testing.T) {
-		server := newSimpleWebserver(
-			fmt.Sprintf("/%s/DASH_480", id),
-			fmt.Sprintf("/%s/audio", id),
-		)
-		defer server.Close()
-		url := fmt.Sprintf("%s/%s/DASH_480?source=fallback", server.URL, id)
-		result := extractVideoQualities(url)
-		assert.Equal(t, []FetchResultMediaEntry{
-			{
-				Link:    fmt.Sprintf("%s/%s/DASH_480", server.URL, id),
-				Quality: "480p",
-			},
-			{
-				Link:    fmt.Sprintf("%s/%s/DASH_360", server.URL, id),
-				Quality: "360p",
-			},
-			{
-				Link:    fmt.Sprintf("%s/%s/DASH_240", server.URL, id),
-				Quality: "240p",
-			},
-			{
-				Link:    fmt.Sprintf("%s/%s/DASH_96", server.URL, id),
-				Quality: "96p",
-			},
-			{
-				Link:    fmt.Sprintf("%s/%s/audio", server.URL, id),
-				Quality: DownloadAudioQuality,
-			},
-		}, result)
-	})
-	t.Run("480p Without Audio", func(t *testing.T) {
-		server := newSimpleWebserver(
-			fmt.Sprintf("/%s/DASH_480.mp4", id),
-		)
-		defer server.Close()
-		url := fmt.Sprintf("%s/%s/DASH_480.mp4?source=fallback", server.URL, id)
-		result := extractVideoQualities(url)
-		assert.Equal(t, []FetchResultMediaEntry{
-			{
-				Link:    fmt.Sprintf("%s/%s/DASH_480.mp4", server.URL, id),
-				Quality: "480p",
-			},
-			{
-				Link:    fmt.Sprintf("%s/%s/DASH_360.mp4", server.URL, id),
-				Quality: "360p",
-			},
-			{
-				Link:    fmt.Sprintf("%s/%s/DASH_240.mp4", server.URL, id),
-				Quality: "240p",
-			},
-			{
-				Link:    fmt.Sprintf("%s/%s/DASH_96.mp4", server.URL, id),
-				Quality: "96p",
-			},
-		}, result)
-	})
-	t.Run("Max Quality Without Audio", func(t *testing.T) {
-		server := newSimpleWebserver()
-		defer server.Close()
-		url := fmt.Sprintf("%s/%s/DASH_%s.mp4?source=fallback", server.URL, id, qualities[0])
-		expectedResult := make([]FetchResultMediaEntry, len(qualities))
-		for i, quality := range qualities {
-			expectedResult[i] = FetchResultMediaEntry{
-				Link:    fmt.Sprintf("%s/%s/DASH_%s.mp4", server.URL, id, quality),
-				Quality: quality + "p",
-			}
-		}
-		result := extractVideoQualities(url)
-		assert.Equal(t, expectedResult, result)
-	})
+func TestGetVideoIDFromVReddit(t *testing.T) {
+	tests := []struct {
+		TestName string
+		Input    string
+		Expected string
+	}{
+		{
+			TestName: "normal",
+			Input:    "https://v.redd.it/dbelx9ulpacb1/DASH_1080.mp4?source=fallback",
+			Expected: "dbelx9ulpacb1",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.TestName, func(t *testing.T) {
+			assert.Equal(t, test.Expected, getVideoIDFromVReddit(test.Input))
+		})
+	}
 }
 
 func TestExtractPhotoGifQualities(t *testing.T) {
@@ -740,10 +651,4 @@ func newSimpleWebserver(patterns ...string) *httptest.Server {
 		mux.HandleFunc(path, func(http.ResponseWriter, *http.Request) {})
 	}
 	return httptest.NewServer(mux)
-}
-
-func randomId() string {
-	bytes := make([]byte, 4)
-	rand.Read(bytes)
-	return hex.EncodeToString(bytes)
 }

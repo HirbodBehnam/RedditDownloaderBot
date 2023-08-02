@@ -1,9 +1,11 @@
 package helpers
 
 import (
+	"RedditDownloaderBot/pkg/common"
 	"encoding/xml"
 	"github.com/go-faster/errors"
 	"io"
+	"net/http"
 	"regexp"
 	"strings"
 )
@@ -55,8 +57,8 @@ type AvailableMedia struct {
 	AvailableAudios []AvailableAudio
 }
 
-// ParseDashPlaylist will parse the DashPlaylist file from Reddit
-func ParseDashPlaylist(r io.Reader) (AvailableMedia, error) {
+// parseDashPlaylist will parse the DashPlaylist file from Reddit
+func parseDashPlaylist(r io.Reader) (AvailableMedia, error) {
 	// Parse XML
 	var parsedXML DashPlaylistXML
 	err := xml.NewDecoder(r).Decode(&parsedXML)
@@ -88,4 +90,24 @@ func ParseDashPlaylist(r io.Reader) (AvailableMedia, error) {
 		}
 	}
 	return result, nil
+}
+
+// ParseDashPlaylistFromID will parse the dash playlist file for a video ID
+func ParseDashPlaylistFromID(vidID string) (AvailableMedia, error) {
+	// Check if vidID is empty
+	if vidID == "" {
+		return AvailableMedia{}, errors.New("empty vidID")
+	}
+	// Request the dash file
+	resp, err := common.GlobalHttpClient.Get("https://v.redd.it/" + vidID + "/DASHPlaylist.mpd")
+	if err != nil {
+		return AvailableMedia{}, errors.Wrap(err, "cannot get url")
+	}
+	defer resp.Body.Close()
+	// Check status
+	if resp.StatusCode != http.StatusOK {
+		return AvailableMedia{}, errors.Errorf("status code of page is not OK: it is %d (%s)", resp.StatusCode, resp.Status)
+	}
+	// Parse body
+	return parseDashPlaylist(resp.Body)
 }

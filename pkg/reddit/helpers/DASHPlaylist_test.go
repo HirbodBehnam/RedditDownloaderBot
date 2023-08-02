@@ -80,7 +80,7 @@ func TestStructParser(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.Name, func(t *testing.T) {
-			gotResult, err := ParseDashPlaylist(strings.NewReader(test.Data))
+			gotResult, err := parseDashPlaylist(strings.NewReader(test.Data))
 			assert.ErrorIs(t, err, test.Error)
 			assert.Equal(t, test.Expected, gotResult)
 		})

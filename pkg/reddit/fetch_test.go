@@ -302,6 +302,14 @@ func TestGetPostId(t *testing.T) {
 			ExpectedIsComment: false,
 			ExpectedError:     "",
 		},
+		{
+			TestName:          "New Shared Links",
+			Url:               "https://reddit.com/r/UkraineWarVideoReport/s/AKk56RlMN6",
+			NeedsInternet:     true,
+			ExpectedID:        "15ma9tp",
+			ExpectedIsComment: false,
+			ExpectedError:     "",
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.TestName, func(t *testing.T) {

@@ -23,7 +23,7 @@ var nsfwNotAllowedErr = &FetchError{
 	BotError:    "NSFW posts are disabled.",
 }
 
-var giphyCommentRegex = regexp.MustCompile("!\\[gif]\\(giphy\\|(\\w+)(?:\\|downsized)?\\)")
+var giphyCommentRegex = regexp.MustCompile(`!\[gif]\(giphy\|(\w+)(?:\|downsized)?\)`)
 
 // StartFetch gets the post info from url
 // The fetchResult can be one of the following types:
@@ -121,6 +121,17 @@ func getPostID(postUrl string) (postID string, isComment bool, err *FetchError) 
 			BotError:    "Cannot parse reddit the url. Does your text contain a reddit url?",
 		}
 		return
+	}
+	if split[3] == "s" {
+		followedUrl, err2 := util.FollowRedirect(u.String())
+		if err2 != nil {
+			err = &FetchError{
+				NormalError: "cannot follow shared link url: " + err2.Error(),
+				BotError:    "Cannot follow the shared link url",
+			}
+			return
+		}
+		return getPostID(followedUrl)
 	}
 	if len(split) >= 7 && split[6] != "" {
 		return split[6], true, nil

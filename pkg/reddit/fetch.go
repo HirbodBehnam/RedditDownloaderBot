@@ -42,7 +42,7 @@ func (o *Oauth) StartFetch(postUrl string) (fetchResult interface{}, fetchError 
 		}
 	}()
 	// Get the post ID
-	postId, isComment, fetchError := getPostID(postUrl)
+	postId, isComment, fetchError := getPostID(postUrl, false)
 	if fetchError != nil {
 		return
 	}
@@ -68,7 +68,10 @@ func (o *Oauth) StartFetch(postUrl string) (fetchResult interface{}, fetchError 
 	return getPost(postUrl, root)
 }
 
-func getPostID(postUrl string) (postID string, isComment bool, err *FetchError) {
+// Gets the post ID from a post URL.
+// If you use this function, pass false for secondPass.
+// It is intended to prevent stack overflow.
+func getPostID(postUrl string, secondPass bool) (postID string, isComment bool, err *FetchError) {
 	var u *url.URL = nil
 	// Check all lines for links. In new reddit update, sharing via Telegram adds the post title at its first
 	lines := strings.Split(postUrl, "\n")
@@ -122,7 +125,7 @@ func getPostID(postUrl string) (postID string, isComment bool, err *FetchError) 
 		}
 		return
 	}
-	if split[3] == "s" {
+	if split[3] == "s" { // new shared reddit url like this: https://reddit.com/r/UkraineWarVideoReport/s/AKk56RlMN6
 		followedUrl, err2 := util.FollowRedirect(u.String())
 		if err2 != nil {
 			err = &FetchError{
@@ -131,7 +134,14 @@ func getPostID(postUrl string) (postID string, isComment bool, err *FetchError) 
 			}
 			return
 		}
-		return getPostID(followedUrl)
+		if secondPass {
+			err = &FetchError{
+				NormalError: "recursion detected: " + postID,
+				BotError:    "Bug detected in the code! This will PROBABLY get fixed near future...",
+			}
+			return
+		}
+		return getPostID(followedUrl, true)
 	}
 	if len(split) >= 7 && split[6] != "" {
 		return split[6], true, nil

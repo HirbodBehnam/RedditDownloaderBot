@@ -1,13 +1,10 @@
 package util
 
 import (
-	"RedditDownloaderBot/pkg/common"
-	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"github.com/google/uuid"
 	"log"
-	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
@@ -15,32 +12,11 @@ import (
 	"unsafe"
 )
 
-// Why another client? Because for some reason, reddit blocks default http client fingerprint even with
-// oauth. I don't know why this happens.
-var redirectHttpClient = http.Client{
-	Transport: &http.Transport{
-		TLSClientConfig: &tls.Config{
-			CipherSuites: []uint16{tls.TLS_CHACHA20_POLY1305_SHA256},
-		},
-	},
-	Timeout: common.GlobalHttpClient.Timeout,
-}
-
 // IsUrl checks if a string is an url
 // From https://stackoverflow.com/a/55551215/4213397
 func IsUrl(str string) bool {
 	u, err := url.Parse(str)
 	return err == nil && u.Scheme != "" && u.Host != ""
-}
-
-// FollowRedirect follows a page's redirect and returns the final URL
-func FollowRedirect(u string) (string, error) {
-	resp, err := redirectHttpClient.Head(u)
-	if err != nil {
-		return "", err
-	}
-	resp.Body.Close()
-	return resp.Request.URL.String(), nil
 }
 
 // DoesFfmpegExists returns true if ffmpeg is found

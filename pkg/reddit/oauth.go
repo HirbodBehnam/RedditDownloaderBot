@@ -122,6 +122,16 @@ func (o *Oauth) GetPost(id string) (map[string]interface{}, error) {
 	return o.doGetJsonRequest(postApiPoint + id)
 }
 
+// FollowRedirect follows a page's redirect and returns the final URL
+func (o *Oauth) FollowRedirect(u string) (string, error) {
+	resp, err := o.head(u)
+	if err != nil {
+		return "", err
+	}
+	resp.Body.Close()
+	return resp.Request.URL.String(), nil
+}
+
 func (o *Oauth) doGetJsonRequest(Url string) (map[string]interface{}, error) {
 	// Check rate limit
 	if time.Now().Unix() < atomic.LoadInt64(&o.rateLimitFreedom) {
@@ -151,4 +161,20 @@ func (o *Oauth) doGetJsonRequest(Url string) (map[string]interface{}, error) {
 	err = json.NewDecoder(resp.Body).Decode(&responseBody)
 	resp.Body.Close()
 	return responseBody, err
+}
+
+// head will do a head request. Useful to check redirects
+func (o *Oauth) head(Url string) (*http.Response, error) {
+	// Check rate limit
+	if time.Now().Unix() < atomic.LoadInt64(&o.rateLimitFreedom) {
+		return nil, RateLimitErr
+	}
+	// Build the request
+	req, err := http.NewRequest("HEAD", Url, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot create request")
+	}
+	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("Authorization", o.authorizationHeader)
+	return common.GlobalHttpClient.Do(req)
 }

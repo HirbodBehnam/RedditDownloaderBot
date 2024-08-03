@@ -1,13 +1,13 @@
 package reddit
 
 import (
-	"RedditDownloaderBot/pkg/util"
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 )
@@ -311,17 +311,37 @@ func TestGetPostId(t *testing.T) {
 			ExpectedError:     "",
 		},
 	}
+	// Try to create an ouath client if client ID and secret is provided
+	oauth := new(Oauth)
+	oauthAvailable := false
+	clientID := os.Getenv("CLIENT_ID")
+	clientSecret := os.Getenv("CLIENT_SECRET")
+	if clientID != "" && clientSecret != "" {
+		var err error
+		oauth, err = NewRedditOauth(clientID, clientSecret)
+		if err != nil {
+			t.Log("Ouath failed:", err)
+			oauth = new(Oauth)
+		} else {
+			oauthAvailable = true
+		}
+	}
+	// Run each test
 	for _, test := range tests {
 		t.Run(test.TestName, func(t *testing.T) {
 			// Check internet if needed
 			if test.NeedsInternet {
-				if _, err := util.FollowRedirect(test.Url); err != nil {
+				if !oauthAvailable {
+					t.Skip("This test needs oauth")
+					return
+				}
+				if _, err := oauth.FollowRedirect(test.Url); err != nil {
 					t.Skip("cannot connect to internet:", err)
 					return
 				}
 			}
 			// Get the id
-			id, isComment, err := getPostID(test.Url)
+			id, isComment, err := oauth.getPostID(test.Url)
 			if err != nil {
 				assert.Equal(t, test.ExpectedError, err.BotError)
 			}

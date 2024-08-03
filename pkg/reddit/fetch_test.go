@@ -212,6 +212,7 @@ func TestGetPostId(t *testing.T) {
 		NeedsInternet     bool
 		ExpectedID        string
 		ExpectedIsComment bool
+		ExpectedRealUrl   string
 		ExpectedError     string // is empty if no error must be thrown
 	}{
 		{
@@ -251,6 +252,7 @@ func TestGetPostId(t *testing.T) {
 			Url:               "Prop Hunt Was Fun\nhttps://www.reddit.com/r/Unexpected/comments/wul62b/prop_hunt_was_fun/\nhttps://google.com",
 			NeedsInternet:     false,
 			ExpectedID:        "wul62b",
+			ExpectedRealUrl:   "https://www.reddit.com/r/Unexpected/comments/wul62b/prop_hunt_was_fun/",
 			ExpectedIsComment: false,
 			ExpectedError:     "",
 		},
@@ -299,6 +301,7 @@ func TestGetPostId(t *testing.T) {
 			Url:               "reddit.com/r/dankmemes/comments/kmi4d3/invest_in_sliding_gif_memes/?utm_medium=android_app&utm_source=share",
 			NeedsInternet:     false,
 			ExpectedID:        "kmi4d3",
+			ExpectedRealUrl:   "https://reddit.com/r/dankmemes/comments/kmi4d3/invest_in_sliding_gif_memes/?utm_medium=android_app&utm_source=share",
 			ExpectedIsComment: false,
 			ExpectedError:     "",
 		},
@@ -307,6 +310,7 @@ func TestGetPostId(t *testing.T) {
 			Url:               "https://reddit.com/r/UkraineWarVideoReport/s/AKk56RlMN6",
 			NeedsInternet:     true,
 			ExpectedID:        "15ma9tp",
+			ExpectedRealUrl:   "https://www.reddit.com/r/UkraineWarVideoReport/comments/15ma9tp/zagorsk_opticalmechanical_plant_in_sergiev_posad/?share_id=v1sVrE120zX-Zw6mWnAID&utm_content=1&utm_medium=android_app&utm_name=androidcss&utm_source=share&utm_term=2",
 			ExpectedIsComment: false,
 			ExpectedError:     "",
 		},
@@ -341,9 +345,14 @@ func TestGetPostId(t *testing.T) {
 				}
 			}
 			// Get the id
-			id, isComment, err := oauth.getPostID(test.Url)
+			id, realPostUrl, isComment, err := oauth.getPostID(test.Url)
 			if err != nil {
 				assert.Equal(t, test.ExpectedError, err.BotError)
+			}
+			if test.ExpectedRealUrl == "" {
+				assert.Equal(t, test.Url, realPostUrl)
+			} else {
+				assert.Equal(t, test.ExpectedRealUrl, realPostUrl)
 			}
 			assert.Equal(t, test.ExpectedIsComment, isComment)
 			assert.Equal(t, test.ExpectedID, id)

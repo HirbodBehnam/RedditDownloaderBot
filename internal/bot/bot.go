@@ -62,7 +62,7 @@ func RunBot(token string, allowedUsers AllowedUsers) {
 
 // fetchPostDetailsAndSend gets the basic info about the post being sent to us
 func fetchPostDetailsAndSend(text string, chatID int64, messageID int) {
-	result, fetchErr := RedditOauth.StartFetch(text)
+	result, realPostUrl, fetchErr := RedditOauth.StartFetch(text)
 	if fetchErr != nil {
 		msg := tgbotapi.NewMessage(chatID, fetchErr.BotError)
 		msg.ReplyToMessageID = messageID
@@ -78,9 +78,9 @@ func fetchPostDetailsAndSend(text string, chatID int64, messageID int) {
 	msg.ParseMode = MarkdownV2
 	switch data := result.(type) {
 	case reddit.FetchResultText:
-		msg.Text = addLinkIfNeeded(data.Title+"\n"+data.Text, text)
+		msg.Text = addLinkIfNeeded(data.Title+"\n"+data.Text, realPostUrl)
 	case reddit.FetchResultComment:
-		msg.Text = addLinkIfNeeded(data.Text, text)
+		msg.Text = addLinkIfNeeded(data.Text, realPostUrl)
 	case reddit.FetchResultMedia:
 		if len(data.Medias) == 0 {
 			msg.Text = "No media found!"
@@ -91,13 +91,13 @@ func fetchPostDetailsAndSend(text string, chatID int64, messageID int) {
 		if len(data.Medias) == 1 && data.Type != reddit.FetchResultMediaTypePhoto {
 			switch data.Type {
 			case reddit.FetchResultMediaTypeGif:
-				handleGifUpload(data.Medias[0].Link, data.Title, data.ThumbnailLink, text, chatID)
+				handleGifUpload(data.Medias[0].Link, data.Title, data.ThumbnailLink, realPostUrl, chatID)
 				return
 			case reddit.FetchResultMediaTypeVideo:
 				// If the video does have an audio, ask user if they want the audio
 				if _, hasAudio := data.HasAudio(); !hasAudio {
 					// Otherwise, just download the video
-					handleVideoUpload(data.Medias[0].Link, "", data.Title, data.ThumbnailLink, text, data.Duration, chatID)
+					handleVideoUpload(data.Medias[0].Link, "", data.Title, data.ThumbnailLink, realPostUrl, data.Duration, chatID)
 					return
 				}
 			}
@@ -116,7 +116,7 @@ func fetchPostDetailsAndSend(text string, chatID int64, messageID int) {
 		}
 		// Insert the id in cache
 		err := CallbackCache.SetMediaCache(idString, cache.CallbackDataCached{
-			PostLink:      text,
+			PostLink:      realPostUrl,
 			Links:         data.Medias.ToLinkMap(),
 			Title:         data.Title,
 			ThumbnailLink: data.ThumbnailLink,

@@ -86,3 +86,11 @@ You can forbid the bot to download NSFW posts. To do so, set this environment va
 ```bash
 export DENY_NSFW=true
 ```
+
+##### Disable Link to Post
+
+You can disable the link to posts which is automatically added to each message by setting this:
+
+```bash
+export DISABLE_LINK_IN_CAPTION=true
+```

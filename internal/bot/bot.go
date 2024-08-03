@@ -6,6 +6,7 @@ import (
 	"RedditDownloaderBot/pkg/reddit"
 	"RedditDownloaderBot/pkg/util"
 	"encoding/json"
+	"errors"
 	"log"
 	"strings"
 
@@ -74,12 +75,12 @@ func fetchPostDetailsAndSend(text string, chatID int64, messageID int) {
 	// Check the result type
 	msg := tgbotapi.NewMessage(chatID, "")
 	msg.ReplyToMessageID = messageID
-	msg.ParseMode = Markdown
+	msg.ParseMode = MarkdownV2
 	switch data := result.(type) {
 	case reddit.FetchResultText:
-		msg.Text = data.Title + "\n" + data.Text + "\n" + "[" + data.Title + "](text)"
+		msg.Text = addLinkIfNeeded(data.Title+"\n"+data.Text, text)
 	case reddit.FetchResultComment:
-		msg.Text = data.Text + "\n" + "[" + data.Text + "](text)"
+		msg.Text = addLinkIfNeeded(data.Text, text)
 	case reddit.FetchResultMedia:
 		if len(data.Medias) == 0 {
 			msg.Text = "No media found!"
@@ -90,13 +91,13 @@ func fetchPostDetailsAndSend(text string, chatID int64, messageID int) {
 		if len(data.Medias) == 1 && data.Type != reddit.FetchResultMediaTypePhoto {
 			switch data.Type {
 			case reddit.FetchResultMediaTypeGif:
-				handleGifUpload(data.Medias[0].Link, data.Title, data.ThumbnailLink, chatID)
+				handleGifUpload(data.Medias[0].Link, data.Title, data.ThumbnailLink, text, chatID)
 				return
 			case reddit.FetchResultMediaTypeVideo:
 				// If the video does have an audio, ask user if they want the audio
 				if _, hasAudio := data.HasAudio(); !hasAudio {
 					// Otherwise, just download the video
-					handleVideoUpload(data.Medias[0].Link, "", data.Title, data.ThumbnailLink, data.Duration, chatID)
+					handleVideoUpload(data.Medias[0].Link, "", data.Title, data.ThumbnailLink, text, data.Duration, chatID)
 					return
 				}
 			}
@@ -115,6 +116,7 @@ func fetchPostDetailsAndSend(text string, chatID int64, messageID int) {
 		}
 		// Insert the id in cache
 		err := CallbackCache.SetMediaCache(idString, cache.CallbackDataCached{
+			PostLink:      text,
 			Links:         data.Medias.ToLinkMap(),
 			Title:         data.Title,
 			ThumbnailLink: data.ThumbnailLink,
@@ -175,15 +177,15 @@ func handleCallback(dataString string, chatID int64, msgId int) {
 	}
 	// Get the cache from database
 	cachedData, err := CallbackCache.GetAndDeleteMediaCache(data.ID)
-	if err == cache.NotFoundErr {
+	if errors.Is(err, cache.NotFoundErr) {
 		// Check albums
 		var album reddit.FetchResultAlbum
 		album, err = CallbackCache.GetAndDeleteAlbumCache(data.ID)
 		if err == nil {
 			handleAlbumUpload(album, chatID, data.Mode == CallbackButtonDataModeFile)
 			return
-		} else if err == cache.NotFoundErr {
-			// It does not exists...
+		} else if errors.Is(err, cache.NotFoundErr) {
+			// It does not exist...
 			bot.Send(tgbotapi.NewMessage(chatID, "Please resend the link to bot"))
 			return
 		}
@@ -204,15 +206,15 @@ func handleCallback(dataString string, chatID int64, msgId int) {
 	// Check the media type
 	switch cachedData.Type {
 	case reddit.FetchResultMediaTypeGif:
-		handleGifUpload(link, cachedData.Title, cachedData.ThumbnailLink, chatID)
+		handleGifUpload(link, cachedData.Title, cachedData.ThumbnailLink, cachedData.PostLink, chatID)
 	case reddit.FetchResultMediaTypePhoto:
-		handlePhotoUpload(link, cachedData.Title, cachedData.ThumbnailLink, chatID, data.Mode == CallbackButtonDataModePhoto)
+		handlePhotoUpload(link, cachedData.Title, cachedData.ThumbnailLink, cachedData.PostLink, chatID, data.Mode == CallbackButtonDataModePhoto)
 	case reddit.FetchResultMediaTypeVideo:
 		if data.LinkKey == cachedData.AudioIndex {
-			handleAudioUpload(link, cachedData.Title, cachedData.Duration, chatID)
+			handleAudioUpload(link, cachedData.Title, cachedData.PostLink, cachedData.Duration, chatID)
 		} else {
 			audioURL := cachedData.Links[cachedData.AudioIndex]
-			handleVideoUpload(link, audioURL, cachedData.Title, cachedData.ThumbnailLink, cachedData.Duration, chatID)
+			handleVideoUpload(link, audioURL, cachedData.Title, cachedData.ThumbnailLink, cachedData.PostLink, cachedData.Duration, chatID)
 		}
 	}
 }

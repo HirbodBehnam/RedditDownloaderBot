@@ -5,6 +5,8 @@ import "RedditDownloaderBot/pkg/reddit"
 // CallbackDataCached is the data we store associated with an ID which is CallbackButtonData.ID
 // We store this type in mediaCache
 type CallbackDataCached struct {
+	// The link of the post itself
+	PostLink string
 	// The list of links which the one in CallbackButtonData.LinkKey is used
 	Links map[int]string
 	// Title of the post

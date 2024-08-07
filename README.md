@@ -108,7 +108,7 @@ ALLOWED_USERS: "1,2,3"
 
 ## Disable NSFW Content
 
-You can keep the bot from downloading NSFW posts by setting the following variable:
+You can keep the bot from downloading NSFW posts by setting the following environment variable:
 
 ```bash
 DENY_NSFW: "true"
@@ -116,7 +116,7 @@ DENY_NSFW: "true"
 
 ## Disable Post Link
 
-You can disable the post link shown in the caption by setting the following variable:
+The post link is included in the caption by default. You can disable it by setting the following environment variable:
 
 ```bash
 DISABLE_LINK_IN_CAPTION: "true"

@@ -19,14 +19,14 @@ func main() {
 	var err error
 	log.Println("Reddit Downloader Bot v" + common.Version)
 	if !util.DoesFfmpegExists() {
-		log.Println("WARNING: ffmpeg is not installed on your system")
+		log.Println("Warning: FFmpeg is not installed on your computer.")
 	}
 	// Load the variables
 	clientID := os.Getenv("CLIENT_ID")
 	clientSecret := os.Getenv("CLIENT_SECRET")
 	botToken := os.Getenv("BOT_TOKEN")
 	if clientID == "" || clientSecret == "" || botToken == "" {
-		log.Fatalln("Please set CLIENT_ID, CLIENT_SECRET and BOT_TOKEN")
+		log.Fatalln("Please set CLIENT_ID, CLIENT_SECRET, and BOT_TOKEN according to the Readme file on GitHub.")
 	}
 	botClient := bot.Client{}
 	// Start up database
@@ -38,7 +38,7 @@ func main() {
 		}
 		botClient.CallbackCache, err = cache.NewRedisCache(redisAddress+":"+redisPort, os.Getenv("REDIS_PASSWORD"), ttl)
 		if err != nil {
-			log.Fatalln("Cannot connect to redis:", err)
+			log.Fatalln("Cannot connect to Redis:", err)
 		}
 	} else { // Simple in cache memory
 		botClient.CallbackCache = cache.NewMemoryCache(5*time.Minute, 10*time.Minute)
@@ -47,7 +47,7 @@ func main() {
 	// Start the reddit oauth
 	botClient.RedditOauth, err = reddit.NewRedditOauth(clientID, clientSecret)
 	if err != nil {
-		log.Fatalln("Cannot initialize the reddit oauth:", err.Error())
+		log.Fatalln("Cannot initialize the Reddit OAuth:", err.Error())
 	}
 	botClient.RunBot(botToken, getAllowedUsers())
 }

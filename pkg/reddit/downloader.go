@@ -18,7 +18,7 @@ const maxDownloadSize = 50 * 1000 * 1000
 
 // FileTooBigError indicates that this file is too big to be uploaded to Telegram
 // So we don't download it at first place
-var FileTooBigError = errors.New("file too big")
+var FileTooBigError = errors.New("The file is too large.")
 
 // DownloadPhoto downloads a photo from reddit and returns the saved file in it
 func DownloadPhoto(link string) (*os.File, error) {
@@ -34,13 +34,13 @@ func DownloadPhoto(link string) (*os.File, error) {
 	// Generate a temp file
 	tmpFile, err := os.CreateTemp("", "*."+fileName)
 	if err != nil {
-		return nil, errors.Wrap(err, "cannot create temp file")
+		return nil, errors.Wrap(err, "Unable to create a temporary file")
 	}
 	// Download the file
 	err = downloadToFile(link, tmpFile)
 	if err != nil {
 		os.Remove(tmpFile.Name())
-		return nil, errors.Wrap(err, "cannot download file")
+		return nil, errors.Wrap(err, "Unable to download the file")
 	}
 	// We are good
 	return tmpFile, nil
@@ -52,7 +52,7 @@ func DownloadVideo(vidUrl, audioUrl string) (videoFile *os.File, err error) {
 	// Download the video in a temp file
 	videoFile, err = os.CreateTemp("", "*.mp4")
 	if err != nil {
-		err = errors.Wrap(err, "cannot create a temp file for video")
+		err = errors.Wrap(err, "Unable to create a temporary file for the video")
 		return
 	}
 	defer func() {
@@ -64,14 +64,14 @@ func DownloadVideo(vidUrl, audioUrl string) (videoFile *os.File, err error) {
 	}()
 	err = downloadToFile(vidUrl, videoFile)
 	if err != nil {
-		err = errors.Wrap(err, "cannot download file")
+		err = errors.Wrap(err, "Unable to download the file")
 		return
 	}
 	// Otherwise, search for an audio file
 	hasAudio := audioUrl != ""
 	audFile, err := os.CreateTemp("", "*.mp4")
 	if err != nil {
-		err = errors.Wrap(err, "cannot create a temp file for audio")
+		err = errors.Wrap(err, "Unable to create a temporary file for the audio")
 		return
 	}
 	// We don't need audio file anyway
@@ -95,7 +95,7 @@ func DownloadVideo(vidUrl, audioUrl string) (videoFile *os.File, err error) {
 		// Convert
 		finalFile, err = os.CreateTemp("", "*.mp4")
 		if err != nil {
-			err = errors.Wrap(err, "cannot create a temp file for final video")
+			err = errors.Wrap(err, "Unable to create a temporary file for the converted video")
 			return
 		}
 		cmd := exec.Command("ffmpeg",
@@ -107,7 +107,7 @@ func DownloadVideo(vidUrl, audioUrl string) (videoFile *os.File, err error) {
 		cmd.Stderr = &stderr
 		err = cmd.Run()
 		if err != nil {
-			log.Println("Cannot convert video:", err, "\n", stderr.String())
+			log.Println("Unable to convert the video:", err, "\n", stderr.String())
 			finalFile.Close()
 			os.Remove(finalFile.Name())
 			// We don't return error here
@@ -144,7 +144,7 @@ func DownloadGif(link string) (*os.File, error) {
 func DownloadThumbnail(link string) (*os.File, error) {
 	tmpFile, err := os.CreateTemp("", "*.jpg")
 	if err != nil {
-		log.Println("Cannot create temp file for thumbnail:", err)
+		log.Println("Unable to create a temporary file for the thumbnail:", err)
 		return nil, err
 	}
 	// Download to file
@@ -162,7 +162,7 @@ func DownloadThumbnail(link string) (*os.File, error) {
 func DownloadAudio(audioUrl string) (*os.File, error) {
 	tmpFile, err := os.CreateTemp("", "*.m4a")
 	if err != nil {
-		log.Println("Cannot create temp file for audio:", err)
+		log.Println("Unable to create a temporary file for the audio:", err)
 		return nil, err
 	}
 	// Download to file
@@ -186,10 +186,10 @@ func downloadToFile(link string, f *os.File) error {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusForbidden {
-		return errors.New("forbidden")
+		return errors.New("Forbidden")
 	}
 	if resp.ContentLength == -1 {
-		return errors.New("unknown length")
+		return errors.New("Unknown length")
 	}
 	if resp.ContentLength > maxDownloadSize {
 		return FileTooBigError

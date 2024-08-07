@@ -20,8 +20,8 @@ func handleGifUpload(bot *gotgbot.Bot, gifUrl, title, thumbnailUrl, postUrl stri
 	// Download the gif
 	tmpFile, err := reddit.DownloadGif(gifUrl)
 	if err != nil {
-		log.Println("Cannot download file", gifUrl, ":", err)
-		_, err = bot.SendMessage(chatID, "Cannot download file.\nHere is the link to file: "+gifUrl, nil)
+		log.Println("Unable to download", gifUrl, ":", err)
+		_, err = bot.SendMessage(chatID, "I couldn’t download this GIF.\nHere is the link: "+gifUrl, nil)
 		return err
 	}
 	defer func() { // Cleanup
@@ -31,7 +31,7 @@ func handleGifUpload(bot *gotgbot.Bot, gifUrl, title, thumbnailUrl, postUrl stri
 	// Upload the gif
 	// Check file size
 	if !util.CheckFileSize(tmpFile.Name(), RegularMaxUploadSize) {
-		_, err = bot.SendMessage(chatID, "This file is too big to upload it on telegram!\nHere is the link to file: "+gifUrl, nil)
+		_, err = bot.SendMessage(chatID, "The file is too large to upload on Telegram.\nHere is the link: "+gifUrl, nil)
 		return err
 	}
 	// Check thumbnail
@@ -55,8 +55,8 @@ func handleGifUpload(bot *gotgbot.Bot, gifUrl, title, thumbnailUrl, postUrl stri
 	}
 	_, err = bot.SendAnimation(chatID, fileReaderFromOsFile(tmpFile), animationOpt)
 	if err != nil {
-		log.Println("Cannot upload file:", err)
-		_, err = bot.SendMessage(chatID, "Cannot upload file.\nHere is the link to file: "+gifUrl, nil)
+		log.Println("Unable to upload:", err)
+		_, err = bot.SendMessage(chatID, "I couldn’t upload this GIF.\nHere is the link: "+gifUrl, nil)
 	}
 	return err
 }
@@ -70,10 +70,10 @@ func handleVideoUpload(bot *gotgbot.Bot, vidUrl, audioUrl, title, thumbnailUrl, 
 	tmpFile, err := reddit.DownloadVideo(vidUrl, audioUrl)
 	if err != nil {
 		if errors.Is(err, reddit.FileTooBigError) {
-			_, err = bot.SendMessage(chatID, "Can't download file due to big size.\n"+generateVideoUrlsMessage(vidUrl, audioUrl), nil)
+			_, err = bot.SendMessage(chatID, "I couldn’t download this file because it’s too large.\n"+generateVideoUrlsMessage(vidUrl, audioUrl), nil)
 		} else {
-			log.Println("Cannot download file", vidUrl, ":", err)
-			_, err = bot.SendMessage(chatID, "Can't download file.\n"+generateVideoUrlsMessage(vidUrl, audioUrl), nil)
+			log.Println("Unable to download", vidUrl, ":", err)
+			_, err = bot.SendMessage(chatID, "I couldn’t download this video.\n"+generateVideoUrlsMessage(vidUrl, audioUrl), nil)
 		}
 		return err
 	}
@@ -83,7 +83,7 @@ func handleVideoUpload(bot *gotgbot.Bot, vidUrl, audioUrl, title, thumbnailUrl, 
 	}()
 	// Check file size
 	if !util.CheckFileSize(tmpFile.Name(), RegularMaxUploadSize) {
-		_, err = bot.SendMessage(chatID, "This file is too big to upload it on telegram!\n"+generateVideoUrlsMessage(vidUrl, audioUrl), nil)
+		_, err = bot.SendMessage(chatID, "This file is too large to upload on Telegram.\n"+generateVideoUrlsMessage(vidUrl, audioUrl), nil)
 		return err
 	}
 	// Check thumbnail
@@ -109,8 +109,8 @@ func handleVideoUpload(bot *gotgbot.Bot, vidUrl, audioUrl, title, thumbnailUrl, 
 	}
 	_, err = bot.SendVideo(chatID, fileReaderFromOsFile(tmpFile), videoOpt)
 	if err != nil {
-		log.Println("Cannot upload file:", err)
-		_, err = bot.SendMessage(chatID, "Cannot upload file.\n"+generateVideoUrlsMessage(vidUrl, audioUrl), nil)
+		log.Println("Unable to upload:", err)
+		_, err = bot.SendMessage(chatID, "I couldn’t upload this video.\n"+generateVideoUrlsMessage(vidUrl, audioUrl), nil)
 	}
 	return err
 }
@@ -128,8 +128,8 @@ func handlePhotoUpload(bot *gotgbot.Bot, photoUrl, title, thumbnailUrl, postUrl 
 	// Download the gif
 	tmpFile, err := reddit.DownloadPhoto(photoUrl)
 	if err != nil {
-		log.Println("Cannot download file", photoUrl, ":", err)
-		_, err = bot.SendMessage(chatID, "Cannot download file.\nHere is the link to file: "+photoUrl, nil)
+		log.Println("Unable to download", photoUrl, ":", err)
+		_, err = bot.SendMessage(chatID, "I couldn’t download this image.\nHere is the link: "+photoUrl, nil)
 		return err
 	}
 	defer func() { // Cleanup
@@ -141,7 +141,7 @@ func handlePhotoUpload(bot *gotgbot.Bot, photoUrl, title, thumbnailUrl, postUrl 
 		asPhoto = util.CheckFileSize(tmpFile.Name(), PhotoMaxUploadSize) // send photo as file if it is larger than 10MB
 	}
 	if !util.CheckFileSize(tmpFile.Name(), RegularMaxUploadSize) {
-		_, err = bot.SendMessage(chatID, "This file is too big to upload it on telegram!\nHere is the link to image: "+photoUrl, nil)
+		_, err = bot.SendMessage(chatID, "The file is too large to upload on Telegram.\nHere is the link: "+photoUrl, nil)
 		return err
 	}
 	// Download thumbnail
@@ -173,8 +173,8 @@ func handlePhotoUpload(bot *gotgbot.Bot, photoUrl, title, thumbnailUrl, postUrl 
 		_, err = bot.SendDocument(chatID, fileReaderFromOsFile(tmpFile), documentOpt)
 	}
 	if err != nil {
-		log.Println("Cannot upload file:", err)
-		_, err = bot.SendMessage(chatID, "Cannot upload file.\nHere is the link to image: "+photoUrl, nil)
+		log.Println("Unable to upload:", err)
+		_, err = bot.SendMessage(chatID, "I couldn’t upload this image.\nHere is the link: "+photoUrl, nil)
 	}
 	return err
 }
@@ -233,8 +233,8 @@ func handleAlbumUpload(bot *gotgbot.Bot, album reddit.FetchResultAlbum, chatID i
 			}
 		}
 		if err != nil {
-			log.Println("Cannot download media of gallery:", err)
-			_, _ = bot.SendMessage(chatID, "Cannot download gallery media; The link was: "+link, nil)
+			log.Println("Unable to download:", err)
+			_, _ = bot.SendMessage(chatID, "I couldn’t download the gallery./nHere is the link: "+link, nil)
 			continue
 		}
 		fileConfigs = append(fileConfigs, f)
@@ -247,7 +247,7 @@ func handleAlbumUpload(bot *gotgbot.Bot, album reddit.FetchResultAlbum, chatID i
 	for ; i < len(fileConfigs)/10; i++ {
 		_, err = bot.SendMediaGroup(chatID, fileConfigs[i*10:(i+1)*10], nil)
 		if err != nil {
-			log.Println("Cannot upload gallery:", err)
+			log.Println("Unable to upload:", err)
 			_, _ = bot.SendMessage(chatID, generateGalleryFailedMessage(fileLinks[i*10:(i+1)*10]), nil)
 		}
 	}
@@ -268,7 +268,7 @@ func handleAlbumUpload(bot *gotgbot.Bot, album reddit.FetchResultAlbum, chatID i
 		_, err = bot.SendMediaGroup(chatID, fileConfigs, nil)
 	}
 	if err != nil {
-		log.Println("Cannot upload gallery:", err)
+		log.Println("Unable to upload:", err)
 		_, err = bot.SendMessage(chatID, generateGalleryFailedMessage(fileLinks[i*10:]), nil)
 	}
 	return err
@@ -282,7 +282,8 @@ func handleAudioUpload(bot *gotgbot.Bot, audioURL, title, postUrl string, durati
 	// Create a temp file
 	audioFile, err := reddit.DownloadAudio(audioURL)
 	if err != nil {
-		_, err = bot.SendMessage(chatID, "Cannot download audio; "+generateAudioURLMessage(audioURL), nil)
+		log.Println("Unable to download:", err)
+		_, err = bot.SendMessage(chatID, "I couldn’t download the audio.\n"+generateAudioURLMessage(audioURL), nil)
 		return err
 	}
 	defer func() {
@@ -296,8 +297,8 @@ func handleAudioUpload(bot *gotgbot.Bot, audioURL, title, postUrl string, durati
 		Duration:  duration,
 	})
 	if err != nil {
-		log.Println("Cannot upload audio:", err)
-		_, err = bot.SendMessage(chatID, "Cannot upload audio; "+generateAudioURLMessage(audioURL), nil)
+		log.Println("Unable to upload:", err)
+		_, err = bot.SendMessage(chatID, "I couldn’t upload the audio.\n"+generateAudioURLMessage(audioURL), nil)
 	}
 	return err
 }
@@ -333,7 +334,7 @@ func statusReporterGoroutine(bot *gotgbot.Bot, chatID int64, action string, done
 func generateVideoUrlsMessage(videoUrl, audioUrl string) string {
 	var sb strings.Builder
 	sb.Grow(150)
-	sb.WriteString("Here is the link to video file: ")
+	sb.WriteString("Here is the link to the video file: ")
 	sb.WriteString(videoUrl)
 	if audioUrl != "" {
 		sb.WriteString("\n")
@@ -344,7 +345,7 @@ func generateVideoUrlsMessage(videoUrl, audioUrl string) string {
 
 // generateAudioURLMessage generates a text to send to user when downloading an audio fails
 func generateAudioURLMessage(audioURL string) string {
-	return "Here is the link to audio file: " + audioURL
+	return "Here is the link to the audio file: " + audioURL
 }
 
 // generateGalleryFailedMessage generates an error message to send to user when uploading gallery goes wrong
@@ -352,7 +353,7 @@ func generateAudioURLMessage(audioURL string) string {
 func generateGalleryFailedMessage(medias []string) string {
 	var sb strings.Builder
 	sb.Grow(len(medias) * 120) // each link length I guess
-	sb.WriteString("Cannot upload gallery.\nHere are the links of the files:")
+	sb.WriteString("I couldn’t upload the media.\nHere are the links to the files:")
 	for _, media := range medias {
 		sb.WriteByte('\n')
 		sb.WriteString(media)

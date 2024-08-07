@@ -28,6 +28,7 @@ func main() {
 	if clientID == "" || clientSecret == "" || botToken == "" {
 		log.Fatalln("Please set CLIENT_ID, CLIENT_SECRET and BOT_TOKEN")
 	}
+	botClient := bot.Client{}
 	// Start up database
 	if redisAddress, redisPort := os.Getenv("REDIS_ADDRESS"), os.Getenv("REDIS_PORT"); redisAddress != "" && redisPort != "" {
 		// Parse ttl
@@ -35,20 +36,20 @@ func main() {
 		if ttl <= 0 {
 			ttl = 5 * time.Minute
 		}
-		bot.CallbackCache, err = cache.NewRedisCache(redisAddress+":"+redisPort, os.Getenv("REDIS_PASSWORD"), ttl)
+		botClient.CallbackCache, err = cache.NewRedisCache(redisAddress+":"+redisPort, os.Getenv("REDIS_PASSWORD"), ttl)
 		if err != nil {
 			log.Fatalln("Cannot connect to redis:", err)
 		}
 	} else { // Simple in cache memory
-		bot.CallbackCache = cache.NewMemoryCache(5*time.Minute, 10*time.Minute)
+		botClient.CallbackCache = cache.NewMemoryCache(5*time.Minute, 10*time.Minute)
 	}
-	defer bot.CallbackCache.Close()
+	defer botClient.CallbackCache.Close()
 	// Start the reddit oauth
-	bot.RedditOauth, err = reddit.NewRedditOauth(clientID, clientSecret)
+	botClient.RedditOauth, err = reddit.NewRedditOauth(clientID, clientSecret)
 	if err != nil {
 		log.Fatalln("Cannot initialize the reddit oauth:", err.Error())
 	}
-	bot.RunBot(botToken, getAllowedUsers())
+	botClient.RunBot(botToken, getAllowedUsers())
 }
 
 // getAllowedUsers gets the list of users which are allowed to use the bot

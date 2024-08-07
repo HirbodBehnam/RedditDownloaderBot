@@ -7,83 +7,104 @@ import (
 	"RedditDownloaderBot/pkg/util"
 	"encoding/json"
 	"errors"
+	"github.com/PaulSonOfLars/gotgbot/v2"
+	"github.com/PaulSonOfLars/gotgbot/v2/ext"
+	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers"
 	"log"
-	"strings"
+	"strconv"
+	"time"
 
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/google/uuid"
 )
 
 // RunBot runs the bot with the specified token
-func RunBot(token string, allowedUsers AllowedUsers) {
-	var err error
-	bot, err = tgbotapi.NewBotAPI(token)
+func (c *Client) RunBot(token string, allowedUsers AllowedUsers) {
+	// Setup the bot
+	bot, err := gotgbot.NewBot(token, nil)
 	if err != nil {
 		log.Fatal("Cannot initialize the bot: ", err.Error())
 	}
-	log.Println("Bot authorized on account", bot.Self.UserName)
-	u := tgbotapi.NewUpdate(0)
-	u.Timeout = 60
-	updates := bot.GetUpdatesChan(u)
-	for update := range updates {
-		if update.CallbackQuery != nil {
-			go handleCallback(update.CallbackQuery.Data, update.CallbackQuery.Message.Chat.ID, update.CallbackQuery.Message.MessageID)
-			continue
-		}
-		if update.Message == nil {
-			continue
-		}
-		if !allowedUsers.IsAllowed(update.Message.From.ID) {
-			// You might want to implement a logic here
-			continue
-		}
-		// Only text messages are allowed
-		if update.Message.Text == "" {
-			bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Please send the reddit post link to bot"))
-			continue
-		}
-		// Check if the message is command
-		if update.Message.IsCommand() {
-			switch update.Message.Command() {
-			case "start":
-				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Hello and welcome!\nJust send me the link of the post to download it for you."))
-			case "about":
-				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Reddit Downloader Bot v"+common.Version+"\nBy Hirbod Behnam\nSource: https://github.com/HirbodBehnam/RedditDownloaderBot"))
-			case "help":
-				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Just send me the link of the reddit post or comment. If it's text, I will send the text of the post. If it's a photo or video, I will send the it with the title as caption."))
-			default:
-				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Sorry this command is not recognized; Try /help"))
-			}
-			continue
-		}
-		go fetchPostDetailsAndSend(update.Message.Text, update.Message.Chat.ID, update.Message.MessageID)
+	log.Println("Bot authorized on account", bot.Username)
+	dispatcher := ext.NewDispatcher(&ext.DispatcherOpts{
+		Error: func(_ *gotgbot.Bot, _ *ext.Context, err error) ext.DispatcherAction {
+			log.Println("an error occurred while handling update:", err.Error())
+			return ext.DispatcherActionNoop
+		},
+		MaxRoutines: ext.DefaultMaxRoutines,
+	})
+	updater := ext.NewUpdater(dispatcher, nil)
+	// Add handlers
+	dispatcher.AddHandler(handlers.NewCallback(func(_ *gotgbot.CallbackQuery) bool {
+		return true
+	}, c.handleCallback))
+	dispatcher.AddHandler(handlers.NewMessage(func(msg *gotgbot.Message) bool {
+		return allowedUsers.IsAllowed(msg.From.Id)
+	}, c.handleMessage))
+	// Wait for updates
+	err = updater.StartPolling(bot, &ext.PollingOpts{
+		DropPendingUpdates: true,
+		GetUpdatesOpts: &gotgbot.GetUpdatesOpts{
+			Timeout: 60,
+			RequestOpts: &gotgbot.RequestOpts{
+				Timeout: time.Second * 10,
+			},
+		},
+	})
+	if err != nil {
+		panic("failed to start polling: " + err.Error())
+	}
+	log.Printf("%s has been started...\n", bot.User.Username)
+
+	// Idle, to keep updates coming in, and avoid bot stopping.
+	updater.Idle()
+}
+
+func (c *Client) handleMessage(bot *gotgbot.Bot, ctx *ext.Context) error {
+	// Only text messages are allowed
+	if ctx.Message.Text == "" {
+		_, err := ctx.EffectiveChat.SendMessage(bot, "Please send the reddit post link to bot", nil)
+		return err
+	}
+	// Check if the message is command. I don't use command handler because I'll lose
+	// the userID control.
+	switch ctx.Message.Text {
+	case "/start":
+		_, err := ctx.EffectiveChat.SendMessage(bot, "Hello and welcome!\nJust send me the link of the post to download it for you.", nil)
+		return err
+	case "/about":
+		_, err := ctx.EffectiveChat.SendMessage(bot, "Reddit Downloader Bot v"+common.Version+"\nBy Hirbod Behnam\nSource: https://github.com/HirbodBehnam/RedditDownloaderBot", nil)
+		return err
+	case "/help":
+		_, err := ctx.EffectiveChat.SendMessage(bot, "Just send me the link of the reddit post or comment. If it's text, I will send the text of the post. If it's a photo or video, I will send the it with the title as caption.", nil)
+		return err
+	default:
+		return c.fetchPostDetailsAndSend(bot, ctx)
 	}
 }
 
 // fetchPostDetailsAndSend gets the basic info about the post being sent to us
-func fetchPostDetailsAndSend(text string, chatID int64, messageID int) {
-	result, realPostUrl, fetchErr := RedditOauth.StartFetch(text)
+func (c *Client) fetchPostDetailsAndSend(bot *gotgbot.Bot, ctx *ext.Context) error {
+	result, realPostUrl, fetchErr := c.RedditOauth.StartFetch(ctx.Message.Text)
 	if fetchErr != nil {
-		msg := tgbotapi.NewMessage(chatID, fetchErr.BotError)
-		msg.ReplyToMessageID = messageID
-		bot.Send(msg)
 		if fetchErr.NormalError != "" {
-			log.Println("cannot get post ", text, ":", fetchErr.NormalError)
+			log.Println("cannot get post ", ctx.Message.Text, ":", fetchErr.NormalError)
 		}
-		return
+		_, err := ctx.EffectiveMessage.Reply(bot, fetchErr.BotError, nil)
+		return err
 	}
 	// Check the result type
-	msg := tgbotapi.NewMessage(chatID, "")
-	msg.ReplyToMessageID = messageID
-	msg.ParseMode = MarkdownV2
+	toSendText := ""
+	toSendOpt := &gotgbot.SendMessageOpts{
+		ParseMode: gotgbot.ParseModeMarkdownV2,
+	}
 	switch data := result.(type) {
 	case reddit.FetchResultText:
-		msg.Text = addLinkIfNeeded(data.Title+"\n"+data.Text, realPostUrl)
+		toSendText = addLinkIfNeeded(data.Title+"\n"+data.Text, realPostUrl)
 	case reddit.FetchResultComment:
-		msg.Text = addLinkIfNeeded(data.Text, realPostUrl)
+		toSendText = addLinkIfNeeded(data.Text, realPostUrl)
 	case reddit.FetchResultMedia:
 		if len(data.Medias) == 0 {
-			msg.Text = "No media found!"
+			toSendText = "No media found!"
 			break
 		}
 		// If there is one media quality, download it
@@ -91,31 +112,31 @@ func fetchPostDetailsAndSend(text string, chatID int64, messageID int) {
 		if len(data.Medias) == 1 && data.Type != reddit.FetchResultMediaTypePhoto {
 			switch data.Type {
 			case reddit.FetchResultMediaTypeGif:
-				handleGifUpload(data.Medias[0].Link, data.Title, data.ThumbnailLink, realPostUrl, chatID)
-				return
+				return handleGifUpload(bot, data.Medias[0].Link, data.Title, data.ThumbnailLink, realPostUrl, ctx.EffectiveChat.Id)
 			case reddit.FetchResultMediaTypeVideo:
 				// If the video does have an audio, ask user if they want the audio
 				if _, hasAudio := data.HasAudio(); !hasAudio {
 					// Otherwise, just download the video
-					handleVideoUpload(data.Medias[0].Link, "", data.Title, data.ThumbnailLink, realPostUrl, data.Duration, chatID)
-					return
+					return handleVideoUpload(bot, data.Medias[0].Link, "", data.Title, data.ThumbnailLink, realPostUrl, data.Duration, ctx.EffectiveChat.Id)
 				}
+			default:
+				panic("Shash")
 			}
 		}
 		// Allow the user to select quality
-		msg.Text = "Please select the quality"
+		toSendText = "Please select the quality"
 		idString := util.UUIDToBase64(uuid.New())
 		audioIndex, _ := data.HasAudio()
 		switch data.Type {
 		case reddit.FetchResultMediaTypePhoto:
-			msg.ReplyMarkup = createPhotoInlineKeyboard(idString, data)
+			toSendOpt.ReplyMarkup = createPhotoInlineKeyboard(idString, data)
 		case reddit.FetchResultMediaTypeGif:
-			msg.ReplyMarkup = createGifInlineKeyboard(idString, data)
+			toSendOpt.ReplyMarkup = createGifInlineKeyboard(idString, data)
 		case reddit.FetchResultMediaTypeVideo:
-			msg.ReplyMarkup = createVideoInlineKeyboard(idString, data)
+			toSendOpt.ReplyMarkup = createVideoInlineKeyboard(idString, data)
 		}
 		// Insert the id in cache
-		err := CallbackCache.SetMediaCache(idString, cache.CallbackDataCached{
+		err := c.CallbackCache.SetMediaCache(idString, cache.CallbackDataCached{
 			PostLink:      realPostUrl,
 			Links:         data.Medias.ToLinkMap(),
 			Title:         data.Title,
@@ -129,92 +150,100 @@ func fetchPostDetailsAndSend(text string, chatID int64, messageID int) {
 		}
 	case reddit.FetchResultAlbum:
 		idString := util.UUIDToBase64(uuid.New())
-		err := CallbackCache.SetAlbumCache(idString, data)
+		err := c.CallbackCache.SetAlbumCache(idString, data)
 		if err != nil {
 			log.Println("Cannot set the album cache in database:", err)
 		}
-		msg.Text = "Download album as media or files?"
-		msg.ReplyMarkup = tgbotapi.InlineKeyboardMarkup{
-			InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{{
-				tgbotapi.NewInlineKeyboardButtonData("Media", CallbackButtonData{
-					ID:   idString,
-					Mode: CallbackButtonDataModePhoto,
-				}.String()),
-				tgbotapi.NewInlineKeyboardButtonData("File", CallbackButtonData{
-					ID:   idString,
-					Mode: CallbackButtonDataModeFile,
-				}.String()),
+		toSendText = "Download album as media or files?"
+		toSendOpt.ReplyMarkup = gotgbot.InlineKeyboardMarkup{
+			InlineKeyboard: [][]gotgbot.InlineKeyboardButton{{
+				gotgbot.InlineKeyboardButton{
+					Text: "Media",
+					CallbackData: CallbackButtonData{
+						ID:   idString,
+						Mode: CallbackButtonDataModePhoto,
+					}.String(),
+				},
+				gotgbot.InlineKeyboardButton{
+					Text: "File",
+					CallbackData: CallbackButtonData{
+						ID:   idString,
+						Mode: CallbackButtonDataModeFile,
+					}.String(),
+				},
 			}},
 		}
 	default:
 		log.Printf("unknown type: %T\n", result)
-		msg.Text = "unknown type (report please)"
+		toSendText = "unknown type (report please)"
 	}
-	_, err := bot.Send(msg)
+	_, err := ctx.EffectiveMessage.Reply(bot, toSendText, toSendOpt)
 	if err != nil {
-		msg.ParseMode = "" // fall back and don't format message
-		bot.Send(msg)
+		toSendOpt.ParseMode = gotgbot.ParseModeNone // fall back and don't format message
+		_, err = ctx.EffectiveMessage.Reply(bot, toSendText, toSendOpt)
 	}
+	return err
 }
 
 // handleCallback handles the callback query of selecting a quality for any media type
-func handleCallback(dataString string, chatID int64, msgId int) {
+func (c *Client) handleCallback(bot *gotgbot.Bot, ctx *ext.Context) error {
 	// Don't crash!
 	defer func() {
 		if r := recover(); r != nil {
-			bot.Send(tgbotapi.NewMessage(chatID, "Cannot get data. (panic)"))
+			_, _ = ctx.EffectiveChat.SendMessage(bot, "Cannot get data. (panic)", nil)
 			log.Println("recovering from panic:", r)
 		}
 	}()
 	// Delete the message
-	bot.Send(tgbotapi.NewDeleteMessage(chatID, msgId))
+	_, _ = bot.DeleteMessage(ctx.EffectiveChat.Id, ctx.EffectiveMessage.GetMessageId(), nil)
 	// Parse the data
 	var data CallbackButtonData
-	err := json.NewDecoder(strings.NewReader(dataString)).Decode(&data)
+	err := json.Unmarshal([]byte(ctx.CallbackQuery.Data), &data)
 	if err != nil {
-		bot.Send(tgbotapi.NewMessage(chatID, "Broken callback data"))
-		return
+		_, err = ctx.EffectiveChat.SendMessage(bot, "Broken callback data", nil)
+		return err
 	}
 	// Get the cache from database
-	cachedData, err := CallbackCache.GetAndDeleteMediaCache(data.ID)
+	cachedData, err := c.CallbackCache.GetAndDeleteMediaCache(data.ID)
 	if errors.Is(err, cache.NotFoundErr) {
 		// Check albums
 		var album reddit.FetchResultAlbum
-		album, err = CallbackCache.GetAndDeleteAlbumCache(data.ID)
+		album, err = c.CallbackCache.GetAndDeleteAlbumCache(data.ID)
 		if err == nil {
-			handleAlbumUpload(album, chatID, data.Mode == CallbackButtonDataModeFile)
-			return
+			return handleAlbumUpload(bot, album, ctx.EffectiveChat.Id, data.Mode == CallbackButtonDataModeFile)
 		} else if errors.Is(err, cache.NotFoundErr) {
 			// It does not exist...
-			bot.Send(tgbotapi.NewMessage(chatID, "Please resend the link to bot"))
-			return
+			_, err = ctx.EffectiveChat.SendMessage(bot, "Please resend the link to bot", nil)
+			return err
 		}
 		// Fall to report internal error
 	}
 	// Check other errors
 	if err != nil {
 		log.Println("Cannot get callback id from database:", err)
-		bot.Send(tgbotapi.NewMessage(chatID, "Internal error"))
-		return
+		_, err = ctx.EffectiveChat.SendMessage(bot, "Internal error", nil)
+		return err
 	}
 	// Check the link
 	link, exists := cachedData.Links[data.LinkKey]
 	if !exists {
-		bot.Send(tgbotapi.NewMessage(chatID, "Please resend the link to bot"))
-		return
+		_, err = ctx.EffectiveChat.SendMessage(bot, "Please resend the link to bot", nil)
+		return err
 	}
 	// Check the media type
 	switch cachedData.Type {
 	case reddit.FetchResultMediaTypeGif:
-		handleGifUpload(link, cachedData.Title, cachedData.ThumbnailLink, cachedData.PostLink, chatID)
+		return handleGifUpload(bot, link, cachedData.Title, cachedData.ThumbnailLink, cachedData.PostLink, ctx.EffectiveChat.Id)
 	case reddit.FetchResultMediaTypePhoto:
-		handlePhotoUpload(link, cachedData.Title, cachedData.ThumbnailLink, cachedData.PostLink, chatID, data.Mode == CallbackButtonDataModePhoto)
+		return handlePhotoUpload(bot, link, cachedData.Title, cachedData.ThumbnailLink, cachedData.PostLink, ctx.EffectiveChat.Id, data.Mode == CallbackButtonDataModePhoto)
 	case reddit.FetchResultMediaTypeVideo:
 		if data.LinkKey == cachedData.AudioIndex {
-			handleAudioUpload(link, cachedData.Title, cachedData.PostLink, cachedData.Duration, chatID)
+			return handleAudioUpload(bot, link, cachedData.Title, cachedData.PostLink, cachedData.Duration, ctx.EffectiveChat.Id)
 		} else {
 			audioURL := cachedData.Links[cachedData.AudioIndex]
-			handleVideoUpload(link, audioURL, cachedData.Title, cachedData.ThumbnailLink, cachedData.PostLink, cachedData.Duration, chatID)
+			return handleVideoUpload(bot, link, audioURL, cachedData.Title, cachedData.ThumbnailLink, cachedData.PostLink, cachedData.Duration, ctx.EffectiveChat.Id)
 		}
 	}
+	// What
+	panic("Unknown media type: " + strconv.Itoa(int(cachedData.Type)))
 }

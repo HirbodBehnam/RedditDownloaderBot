@@ -1,13 +1,13 @@
 package reddit
 
 import (
-	"RedditDownloaderBot/pkg/util"
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 )
@@ -212,6 +212,7 @@ func TestGetPostId(t *testing.T) {
 		NeedsInternet     bool
 		ExpectedID        string
 		ExpectedIsComment bool
+		ExpectedRealUrl   string
 		ExpectedError     string // is empty if no error must be thrown
 	}{
 		{
@@ -251,6 +252,7 @@ func TestGetPostId(t *testing.T) {
 			Url:               "Prop Hunt Was Fun\nhttps://www.reddit.com/r/Unexpected/comments/wul62b/prop_hunt_was_fun/\nhttps://google.com",
 			NeedsInternet:     false,
 			ExpectedID:        "wul62b",
+			ExpectedRealUrl:   "https://www.reddit.com/r/Unexpected/comments/wul62b/prop_hunt_was_fun/",
 			ExpectedIsComment: false,
 			ExpectedError:     "",
 		},
@@ -299,6 +301,7 @@ func TestGetPostId(t *testing.T) {
 			Url:               "reddit.com/r/dankmemes/comments/kmi4d3/invest_in_sliding_gif_memes/?utm_medium=android_app&utm_source=share",
 			NeedsInternet:     false,
 			ExpectedID:        "kmi4d3",
+			ExpectedRealUrl:   "https://reddit.com/r/dankmemes/comments/kmi4d3/invest_in_sliding_gif_memes/?utm_medium=android_app&utm_source=share",
 			ExpectedIsComment: false,
 			ExpectedError:     "",
 		},
@@ -307,23 +310,49 @@ func TestGetPostId(t *testing.T) {
 			Url:               "https://reddit.com/r/UkraineWarVideoReport/s/AKk56RlMN6",
 			NeedsInternet:     true,
 			ExpectedID:        "15ma9tp",
+			ExpectedRealUrl:   "https://www.reddit.com/r/UkraineWarVideoReport/comments/15ma9tp/zagorsk_opticalmechanical_plant_in_sergiev_posad/?share_id=v1sVrE120zX-Zw6mWnAID&utm_content=1&utm_medium=android_app&utm_name=androidcss&utm_source=share&utm_term=2",
 			ExpectedIsComment: false,
 			ExpectedError:     "",
 		},
 	}
+	// Try to create an ouath client if client ID and secret is provided
+	oauth := new(Oauth)
+	oauthAvailable := false
+	clientID := os.Getenv("CLIENT_ID")
+	clientSecret := os.Getenv("CLIENT_SECRET")
+	if clientID != "" && clientSecret != "" {
+		var err error
+		oauth, err = NewRedditOauth(clientID, clientSecret)
+		if err != nil {
+			t.Log("Ouath failed:", err)
+			oauth = new(Oauth)
+		} else {
+			oauthAvailable = true
+		}
+	}
+	// Run each test
 	for _, test := range tests {
 		t.Run(test.TestName, func(t *testing.T) {
 			// Check internet if needed
 			if test.NeedsInternet {
-				if _, err := util.FollowRedirect(test.Url); err != nil {
+				if !oauthAvailable {
+					t.Skip("This test needs oauth")
+					return
+				}
+				if _, err := oauth.FollowRedirect(test.Url); err != nil {
 					t.Skip("cannot connect to internet:", err)
 					return
 				}
 			}
 			// Get the id
-			id, isComment, err := getPostID(test.Url)
+			id, realPostUrl, isComment, err := oauth.getPostID(test.Url)
 			if err != nil {
 				assert.Equal(t, test.ExpectedError, err.BotError)
+			}
+			if test.ExpectedRealUrl == "" {
+				assert.Equal(t, test.Url, realPostUrl)
+			} else {
+				assert.Equal(t, test.ExpectedRealUrl, realPostUrl)
 			}
 			assert.Equal(t, test.ExpectedIsComment, isComment)
 			assert.Equal(t, test.ExpectedID, id)

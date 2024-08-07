@@ -2,10 +2,19 @@ package bot
 
 import (
 	"RedditDownloaderBot/pkg/reddit"
+	"RedditDownloaderBot/pkg/util"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"io"
 	"os"
+	"strings"
 )
+
+// If this value is false, we will not add the link of the post to each message caption.
+var disableIncludeLinkInCaption = util.ParseEnvironmentVariableBool("DISABLE_LINK_IN_CAPTION")
+
+// The characters which needs to be escaped based on
+// https://core.telegram.org/bots/api#formatting-options
+var markdownEscaper = strings.NewReplacer("_", "\\_", "*", "\\*", "[", "\\[", "]", "\\]", "(", "\\(", ")", "\\)", "~", "\\~", "`", "\\`", ">", "\\>", "#", "\\#", "+", "\\+", "-", "\\-", "=", "\\=", "|", "\\|", "{", "\\{", "}", "\\}", ".", "\\.", "!", "\\!")
 
 // createPhotoInlineKeyboard creates inline keyboards to get the quality info of a photo
 // Each row represents a quality and each row has two columns: Send as photo or send as file
@@ -60,6 +69,19 @@ func createVideoInlineKeyboard(id string, medias reddit.FetchResultMedia) tgbota
 		rows[i] = []tgbotapi.InlineKeyboardButton{tgbotapi.NewInlineKeyboardButtonData(media.Quality, info.String())}
 	}
 	return tgbotapi.InlineKeyboardMarkup{InlineKeyboard: rows}
+}
+
+// Adds the link of the post to a text if needed (the INCLUDE_LINK is set)
+func addLinkIfNeeded(text, link string) string {
+	if disableIncludeLinkInCaption {
+		return text
+	}
+	return text + "\n\n" + "[🔗 Link](" + link + ")"
+}
+
+// escapeMarkdown will escape the characters which are not ok in markdown
+func escapeMarkdown(text string) string {
+	return markdownEscaper.Replace(text)
 }
 
 // telegramUploadOsFile is wrapper for os.File in order to make it uploadable in Telegram

@@ -3,16 +3,17 @@ package bot
 import (
 	"RedditDownloaderBot/pkg/reddit"
 	"RedditDownloaderBot/pkg/util"
-	"github.com/go-faster/errors"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"log"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/go-faster/errors"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 // handleGifUpload downloads a gif and then uploads it to Telegram
-func handleGifUpload(gifUrl, title, thumbnailUrl string, chatID int64) {
+func handleGifUpload(gifUrl, title, thumbnailUrl, postUrl string, chatID int64) {
 	// Inform the user we are doing some shit
 	stopReportChannel := statusReporter(chatID, "upload_video")
 	defer close(stopReportChannel)
@@ -46,7 +47,8 @@ func handleGifUpload(gifUrl, title, thumbnailUrl string, chatID int64) {
 	}
 	// Upload it
 	msg := tgbotapi.NewAnimation(chatID, telegramUploadOsFile{tmpFile})
-	msg.Caption = title
+	msg.Caption = addLinkIfNeeded(escapeMarkdown(title), postUrl)
+	msg.ParseMode = MarkdownV2
 	if tmpThumbnailFile != nil {
 		msg.Thumb = telegramUploadOsFile{tmpThumbnailFile}
 	}
@@ -59,7 +61,7 @@ func handleGifUpload(gifUrl, title, thumbnailUrl string, chatID int64) {
 }
 
 // handleVideoUpload downloads a video and then uploads it to Telegram
-func handleVideoUpload(vidUrl, audioUrl, title, thumbnailUrl string, duration int, chatID int64) {
+func handleVideoUpload(vidUrl, audioUrl, title, thumbnailUrl, postUrl string, duration int, chatID int64) {
 	// Inform the user we are doing some shit
 	stopReportChannel := statusReporter(chatID, "upload_video")
 	defer close(stopReportChannel)
@@ -96,9 +98,10 @@ func handleVideoUpload(vidUrl, audioUrl, title, thumbnailUrl string, duration in
 	}
 	// Upload it
 	msg := tgbotapi.NewVideo(chatID, telegramUploadOsFile{tmpFile})
-	msg.Caption = title
+	msg.Caption = addLinkIfNeeded(escapeMarkdown(title), postUrl)
 	msg.Duration = duration
 	msg.SupportsStreaming = true
+	msg.ParseMode = MarkdownV2
 	if tmpThumbnailFile != nil {
 		msg.Thumb = telegramUploadOsFile{tmpThumbnailFile}
 	}
@@ -111,7 +114,7 @@ func handleVideoUpload(vidUrl, audioUrl, title, thumbnailUrl string, duration in
 }
 
 // handleVideoUpload downloads a photo and then uploads it to Telegram
-func handlePhotoUpload(photoUrl, title, thumbnailUrl string, chatID int64, asPhoto bool) {
+func handlePhotoUpload(photoUrl, title, thumbnailUrl, postUrl string, chatID int64, asPhoto bool) {
 	// Inform the user we are doing some shit
 	var stopReportChannel chan struct{}
 	if asPhoto {
@@ -154,14 +157,16 @@ func handlePhotoUpload(photoUrl, title, thumbnailUrl string, chatID int64, asPho
 	var msg tgbotapi.Chattable
 	if asPhoto {
 		photo := tgbotapi.NewPhoto(chatID, telegramUploadOsFile{tmpFile})
-		photo.Caption = title
+		photo.Caption = addLinkIfNeeded(escapeMarkdown(title), postUrl)
+		photo.ParseMode = MarkdownV2
 		if tmpThumbnailFile != nil {
 			photo.Thumb = telegramUploadOsFile{tmpThumbnailFile}
 		}
 		msg = photo
 	} else {
 		photo := tgbotapi.NewDocument(chatID, telegramUploadOsFile{tmpFile})
-		photo.Caption = title
+		photo.Caption = addLinkIfNeeded(escapeMarkdown(title), postUrl)
+		photo.ParseMode = MarkdownV2
 		if tmpThumbnailFile != nil {
 			photo.Thumb = telegramUploadOsFile{tmpThumbnailFile}
 		}
@@ -277,7 +282,7 @@ func handleAlbumUpload(album reddit.FetchResultAlbum, chatID int64, asFile bool)
 }
 
 // handleAudioUpload simply downloads then uploads an audio to Telegram
-func handleAudioUpload(audioURL, title string, duration int, chatID int64) {
+func handleAudioUpload(audioURL, title, postUrl string, duration int, chatID int64) {
 	// Send status
 	stopReportChannel := statusReporter(chatID, "upload_voice")
 	defer close(stopReportChannel)
@@ -293,7 +298,8 @@ func handleAudioUpload(audioURL, title string, duration int, chatID int64) {
 	}()
 	// Simply upload it to telegram
 	msg := tgbotapi.NewAudio(chatID, telegramUploadOsFile{audioFile})
-	msg.Caption = title
+	msg.Caption = addLinkIfNeeded(escapeMarkdown(title), postUrl)
+	msg.ParseMode = MarkdownV2
 	msg.Duration = duration
 	_, err = bot.Send(msg)
 	if err != nil {

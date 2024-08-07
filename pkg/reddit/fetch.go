@@ -31,7 +31,7 @@ var giphyCommentRegex = regexp.MustCompile(`!\[gif]\(giphy\|(\w+)(?:\|downsized)
 // FetchResultComment
 // FetchResultMedia
 // FetchResultAlbum
-func (o *Oauth) StartFetch(postUrl string) (fetchResult interface{}, fetchError *FetchError) {
+func (o *Oauth) StartFetch(postUrl string) (fetchResult interface{}, realPostUrl string, fetchError *FetchError) {
 	// Don't crash the whole application
 	defer func() {
 		if r := recover(); r != nil {
@@ -42,19 +42,19 @@ func (o *Oauth) StartFetch(postUrl string) (fetchResult interface{}, fetchError 
 		}
 	}()
 	// Get the post ID
-	postId, isComment, fetchError := getPostID(postUrl)
+	postId, realPostUrl, isComment, fetchError := o.getPostID(postUrl)
 	if fetchError != nil {
 		return
 	}
 	if isComment {
 		root, err := o.GetComment(postId)
 		if err != nil {
-			return nil, &FetchError{
+			return nil, "", &FetchError{
 				NormalError: "cannot download comment: " + err.Error(),
 				BotError:    "Cannot download comment",
 			}
 		}
-		return getCommentFromRoot(root), nil
+		return getCommentFromRoot(root), realPostUrl, nil
 	}
 	// Now download the json
 	root, err := o.GetPost(postId)
@@ -65,12 +65,13 @@ func (o *Oauth) StartFetch(postUrl string) (fetchResult interface{}, fetchError 
 		}
 		return
 	}
-	return getPost(postUrl, root)
+	fetchResult, fetchError = getPost(postUrl, root)
+	return
 }
 
 // Gets the post ID from a post URL.
 // If you use this function, pass false for secondPass.
-func getPostID(postUrl string) (postID string, isComment bool, err *FetchError) {
+func (o *Oauth) getPostID(postUrl string) (postID, realPostUrl string, isComment bool, err *FetchError) {
 	var u *url.URL = nil
 	// Check all lines for links. In new reddit update, sharing via Telegram adds the post title at its first
 	lines := strings.Split(postUrl, "\n")
@@ -79,6 +80,7 @@ func getPostID(postUrl string) (postID string, isComment bool, err *FetchError) 
 			line = "https://" + line
 		}
 		u, _ = url.Parse(line)
+		realPostUrl = line
 		if u == nil {
 			continue
 		}
@@ -91,10 +93,10 @@ func getPostID(postUrl string) (postID string, isComment bool, err *FetchError) 
 				continue
 			}
 			// redd.it links are never comments
-			return p, false, nil
+			return p, realPostUrl, false, nil
 		}
 		if u.Host == "v.redd.it" {
-			followedUrl, err := util.FollowRedirect(line)
+			followedUrl, err := o.FollowRedirect(line)
 			if err != nil {
 				continue
 			}
@@ -107,6 +109,7 @@ func getPostID(postUrl string) (postID string, isComment bool, err *FetchError) 
 		u = nil // this is for last loop. If u is nil after that final loop, it means that there is no reddit url in text
 	}
 	if u == nil {
+		realPostUrl = ""
 		err = &FetchError{
 			NormalError: "",
 			BotError:    "Cannot parse reddit the url. Does your text contain a reddit url?",
@@ -115,7 +118,7 @@ func getPostID(postUrl string) (postID string, isComment bool, err *FetchError) 
 	}
 	split := strings.Split(u.Path, "/")
 	if len(split) == 2 { // www.reddit.com/x
-		return split[1], false, nil
+		return split[1], realPostUrl, false, nil
 	}
 	if len(split) < 5 {
 		err = &FetchError{
@@ -125,7 +128,7 @@ func getPostID(postUrl string) (postID string, isComment bool, err *FetchError) 
 		return
 	}
 	if split[3] == "s" { // new shared reddit url like this: https://reddit.com/r/UkraineWarVideoReport/s/AKk56RlMN6
-		followedUrl, err2 := util.FollowRedirect(u.String())
+		followedUrl, err2 := o.FollowRedirect(u.String())
 		if err2 != nil {
 			err = &FetchError{
 				NormalError: "cannot follow shared link url: " + err2.Error(),
@@ -140,12 +143,12 @@ func getPostID(postUrl string) (postID string, isComment bool, err *FetchError) 
 			}
 			return
 		}
-		return getPostID(followedUrl)
+		return o.getPostID(followedUrl)
 	}
 	if len(split) >= 7 && split[6] != "" {
-		return split[6], true, nil
+		return split[6], realPostUrl, true, nil
 	}
-	return split[4], false, nil
+	return split[4], realPostUrl, false, nil
 }
 
 // getCommentFromRoot gets the comment content from root of the json API.

@@ -72,7 +72,7 @@ type FetchResultMedia struct {
 	// Title is the title of the post
 	Title string
 	// Duration of the video. This entry does not matter on other types
-	Duration int
+	Duration int64
 	// Types says what kind of media is this
 	Type FetchResultMediaType
 }

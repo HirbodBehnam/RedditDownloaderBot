@@ -301,7 +301,7 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 				Medias:        qualities,
 				ThumbnailLink: thumbnailUrl,
 				Title:         title,
-				Duration:      int(duration),
+				Duration:      int64(duration),
 				Type:          FetchResultMediaTypeVideo,
 			}, nil
 		case "rich:video": // files hosted other than reddit; This bot currently supports gfycat.com

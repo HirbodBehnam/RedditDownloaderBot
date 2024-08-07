@@ -36,8 +36,8 @@ func (o *Oauth) StartFetch(postUrl string) (fetchResult interface{}, realPostUrl
 	defer func() {
 		if r := recover(); r != nil {
 			fetchError = &FetchError{
-				NormalError: fmt.Sprintf("recovering from panic in StartFetch error is: %v, The url was: %v", r, postUrl),
-				BotError:    "Cannot get data. (panic)\nMaybe deleted post or invalid url?",
+				NormalError: fmt.Sprintf("Recovering from panic in StartFetch. Error encountered: %v; URL: %v", r, postUrl),
+				BotError: "Unable to get the data.\nMaybe a deleted post or invalid URL?",
 			}
 		}
 	}()
@@ -50,8 +50,8 @@ func (o *Oauth) StartFetch(postUrl string) (fetchResult interface{}, realPostUrl
 		root, err := o.GetComment(postId)
 		if err != nil {
 			return nil, "", &FetchError{
-				NormalError: "cannot download comment: " + err.Error(),
-				BotError:    "Cannot download comment",
+				NormalError: "Unable to fetch the comment: " + err.Error(),
+				BotError:    "Unable to fetch the comment",
 			}
 		}
 		return getCommentFromRoot(root), realPostUrl, nil
@@ -60,8 +60,8 @@ func (o *Oauth) StartFetch(postUrl string) (fetchResult interface{}, realPostUrl
 	root, err := o.GetPost(postId)
 	if err != nil {
 		fetchError = &FetchError{
-			NormalError: "cannot get the post data: " + err.Error(),
-			BotError:    "Cannot get the post data",
+			NormalError: "Unable to get the post data: " + err.Error(),
+			BotError:    "Unable to get the post data",
 		}
 		return
 	}
@@ -106,13 +106,13 @@ func (o *Oauth) getPostID(postUrl string) (postID, realPostUrl string, isComment
 			postUrl = line
 			break
 		}
-		u = nil // this is for last loop. If u is nil after that final loop, it means that there is no reddit url in text
+		u = nil // this is for last loop. If u is nil after that final loop, it means that there is no reddit URL in text
 	}
 	if u == nil {
 		realPostUrl = ""
 		err = &FetchError{
 			NormalError: "",
-			BotError:    "Cannot parse reddit the url. Does your text contain a reddit url?",
+			BotError:    "Unable to parse the URL. Please make sure your message contains a valid Reddit link.",
 		}
 		return
 	}
@@ -123,23 +123,23 @@ func (o *Oauth) getPostID(postUrl string) (postID, realPostUrl string, isComment
 	if len(split) < 5 {
 		err = &FetchError{
 			NormalError: "",
-			BotError:    "Cannot parse reddit the url. Does your text contain a reddit url?",
+			BotError:    "Unable to parse the URL. Please make sure your message contains a valid Reddit link.",
 		}
 		return
 	}
-	if split[3] == "s" { // new shared reddit url like this: https://reddit.com/r/UkraineWarVideoReport/s/AKk56RlMN6
+	if split[3] == "s" { // new shared reddit URL like this: https://reddit.com/r/UkraineWarVideoReport/s/AKk56RlMN6
 		followedUrl, err2 := o.FollowRedirect(u.String())
 		if err2 != nil {
 			err = &FetchError{
-				NormalError: "cannot follow shared link url: " + err2.Error(),
-				BotError:    "Cannot follow the shared link url",
+				NormalError: "Unable to follow the shared URL: " + err2.Error(),
+				BotError:    "Unable to follow the shared URL",
 			}
 			return
 		}
 		if followedUrl == u.String() {
 			err = &FetchError{
-				NormalError: "recursion detected: " + postID,
-				BotError:    "Corrupted link. Paste the link in your browser and send the redirected link to bot.",
+				NormalError: "Recursion detected: " + postID,
+				BotError:    "Corrupted or unsupported URL. Paste the link in your browser, then send the redirected link to the bot.",
 			}
 			return
 		}
@@ -151,7 +151,7 @@ func (o *Oauth) getPostID(postUrl string) (postID, realPostUrl string, isComment
 	return split[4], realPostUrl, false, nil
 }
 
-// getCommentFromRoot gets the comment content from root of the json API.
+// getCommentFromRoot gets the comment content from root of the JSON API.
 // The result is either a FetchResultMedia with gif type or FetchResultComment
 func getCommentFromRoot(root map[string]interface{}) interface{} {
 	// Check gif comments
@@ -160,7 +160,7 @@ func getCommentFromRoot(root map[string]interface{}) interface{} {
 		return FetchResultMedia{
 			Medias: []FetchResultMediaEntry{{
 				Link:    fmt.Sprintf("https://i.giphy.com/media/%s/giphy.gif", matches[1]),
-				Quality: "giphy",
+				Quality: "Giphy",
 			}},
 			Type:  FetchResultMediaTypeGif,
 			Title: strings.ReplaceAll(text, matches[0], ""),
@@ -184,16 +184,16 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 		data, exists := root["data"]
 		if !exists {
 			fetchError = &FetchError{
-				NormalError: "cannot parse the page data: cannot find node `data`",
-				BotError:    "Cannot parse the page data: cannot find node `data`",
+				NormalError: "Unable to parse the page data: couldn’t find node `data`",
+				BotError:    "Unable to parse the page data: couldn’t find node `data`",
 			}
 			return
 		}
 		children, exists := data.(map[string]interface{})["children"]
 		if !exists {
 			fetchError = &FetchError{
-				NormalError: "cannot parse the page data: cannot find node `data->children`",
-				BotError:    "Cannot parse the page data: cannot find node `data->children`",
+				NormalError: "Unable to parse the page data: couldn’t find node `data->children`",
+				BotError:    "Unable to parse the page data: couldn’t find node `data->children`",
 			}
 			return
 		}
@@ -201,8 +201,8 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 		data, exists = data.(map[string]interface{})["data"]
 		if !exists {
 			fetchError = &FetchError{
-				NormalError: "cannot parse the page data: cannot find node `data->children[0]->data`",
-				BotError:    "Cannot parse the page data: cannot find node `data->children[0]->data`",
+				NormalError: "Unable to parse the page data: couldn’t find node `data->children[0]->data`",
+				BotError:    "Unable to parse the page data: couldn’t find node `data->children[0]->data`",
 			}
 			return
 		}
@@ -246,10 +246,10 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 				if strings.HasPrefix(root["url"].(string), "https://i.imgur.com") { // Example: https://www.reddit.com/r/dankmemes/comments/gag117/you_daughter_of_a_bitch_im_in/
 					gifDownloadUrl := root["url"].(string)
 					lastSlash := strings.LastIndex(gifDownloadUrl, "/")
-					gifDownloadUrl = gifDownloadUrl[:lastSlash+1] + "download" + gifDownloadUrl[lastSlash:]
+					gifDownloadUrl = gifDownloadUrl[:lastSlash+1] + "Download" + gifDownloadUrl[lastSlash:]
 					result.Medias = []FetchResultMediaEntry{{
 						Link:    gifDownloadUrl,
-						Quality: "imgur", // It doesn't matter
+						Quality: "Imgur", // It doesn't matter
 					}}
 				} else {
 					result.Medias = extractPhotoGifQualities(root["preview"].(map[string]interface{})["images"].([]interface{})[0].(map[string]interface{})["variants"].(map[string]interface{})["mp4"].(map[string]interface{}))
@@ -274,7 +274,7 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 				return FetchResultMedia{
 					Medias: []FetchResultMediaEntry{{
 						Link:    u[:len(u)-4] + "mp4",
-						Quality: "imgur", // It doesn't matter
+						Quality: "Imgur", // It doesn't matter
 					}},
 					ThumbnailLink: thumbnailUrl,
 					Title:         title,
@@ -293,8 +293,8 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 			qualities, err := extractVideoQualities(dashURL)
 			if err != nil {
 				return nil, &FetchError{
-					NormalError: "cannot get qualities for video. The main url was " + postUrl + "; Error was " + err.Error(),
-					BotError:    "Cannot get the video. Here is the direct link to video:\n" + fallbackURL,
+					NormalError: "Unable to get qualities for video. The main URL was " + postUrl + "; Error was " + err.Error(),
+					BotError:    "Unable to get the video. Here is the direct link to video:\n" + fallbackURL,
 				}
 			}
 			return FetchResultMedia{
@@ -304,10 +304,10 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 				Duration:      int64(duration),
 				Type:          FetchResultMediaTypeVideo,
 			}, nil
-		case "rich:video": // files hosted other than reddit; This bot currently supports gfycat.com
+		case "rich:video": // files hosted other than reddit; This bot currently supports Gfycat.com
 			if urlObject, domainExists := root["domain"]; domainExists {
 				switch urlObject.(string) {
-				case "gfycat.com": // just act like gif
+				case "Gfycat.com": // just act like gif
 					images := root["preview"].(map[string]interface{})["images"].([]interface{})[0].(map[string]interface{})
 					if _, hasVariants := images["variants"]; hasVariants {
 						if mp4, hasMp4 := images["variants"].(map[string]interface{})["mp4"]; hasMp4 {
@@ -327,8 +327,8 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 							qualities, err := extractVideoQualities(dashURL)
 							if err != nil {
 								return nil, &FetchError{
-									NormalError: "cannot get qualities for gfycat. The main url was " + postUrl + "; Error was " + err.Error(),
-									BotError:    "Cannot get the video. Here is the direct link to gfycat:\n" + fallback,
+									NormalError: "Unable to get the qualities for Gfycat. The original link: " + postUrl + ". Error encountered: " + err.Error(),
+									BotError:    "Unable to get the video.\nHere is the link:" + fallback,
 								}
 							}
 							return FetchResultMedia{
@@ -340,16 +340,16 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 						}
 					}
 					return nil, &FetchError{
-						NormalError: "cannot get the media from gfycat. The main url was " + postUrl,
-						BotError:    "Cannot get the video. Here is the direct link to gfycat:\n" + root["url"].(string),
+						NormalError: "Unable to get the media from Gfycat. The original link: " + postUrl,
+						BotError:    "Unable to get the video.\nHere is the link:" + root["url"].(string),
 					}
 				case "streamable.com": // example: https://streamable.com/u2jzoo
 					// Download the source at first
 					source, err := common.GlobalHttpClient.Get(root["url"].(string))
 					if err != nil {
 						return nil, &FetchError{
-							NormalError: "cannot get the source code of " + root["url"].(string) + ": " + err.Error(),
-							BotError:    "Cannot get the source code of " + root["url"].(string),
+							NormalError: "Unable to get the source code of " + root["url"].(string) + ": " + err.Error(),
+							BotError:    "Unable to get the source code of " + root["url"].(string),
 						}
 					}
 					defer source.Body.Close()
@@ -357,8 +357,8 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 					doc, err := goquery.NewDocumentFromReader(source.Body)
 					if err != nil {
 						return nil, &FetchError{
-							NormalError: "cannot get the parse code of " + root["url"].(string) + ": " + err.Error(),
-							BotError:    "Cannot get the parse code of " + root["url"].(string),
+							NormalError: "Unable to get the parse code of " + root["url"].(string) + ": " + err.Error(),
+							BotError:    "Unable to get the parse code of " + root["url"].(string),
 						}
 					}
 					result := FetchResultMedia{
@@ -377,23 +377,23 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 					})
 					return result, nil
 				case "redgifs.com":
-					// get redgifs info from api
+					// get RedGIFs info from api
 					redgifsid := helpers.GetRedGifsID(root["url"].(string))
 					if redgifsid == "" {
 						return nil, &FetchError{
-							NormalError: "cannot get redgifs id from " + root["url"].(string),
-							BotError:    "Cannot get redgifs id from  " + root["url"].(string),
+							NormalError: "Unable to get RedGIFs ID from " + root["url"].(string),
+							BotError:    "Unable to get RedGIFs ID from  " + root["url"].(string),
 						}
 					}
 
-					// api for redgifs is in https://i.redgifs.com/docs/index.html
+					// api for RedGIFs is in https://i.redgifs.com/docs/index.html
 					infoUrl := fmt.Sprintf("https://api.redgifs.com/v2/gifs/%s", redgifsid)
 
 					source, err := common.GlobalHttpClient.Get(infoUrl)
 					if err != nil {
 						return nil, &FetchError{
-							NormalError: "cannot get redgifs info " + infoUrl + ": " + err.Error(),
-							BotError:    "Cannot get redgifs info " + infoUrl,
+							NormalError: "Unable to get RedGIFs info " + infoUrl + ": " + err.Error(),
+							BotError:    "Unable to get RedGIFs info " + infoUrl,
 						}
 					}
 					defer source.Body.Close()
@@ -401,18 +401,18 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 					doc, err := helpers.GetRedGifsInfo(source.Body)
 					if err != nil {
 						return nil, &FetchError{
-							NormalError: "cannot get the parse redgifs info from " + infoUrl + ": " + err.Error(),
-							BotError:    "Cannot get the parse redgifs info from " + infoUrl,
+							NormalError: "Unable to get the parse RedGIFs info from " + infoUrl + ": " + err.Error(),
+							BotError:    "Unable to get the parse RedGIFs info from " + infoUrl,
 						}
 					}
 					result := FetchResultMedia{
 						Medias: []FetchResultMediaEntry{
 							{
-								Quality: "hd",
+								Quality: "HD",
 								Link:    doc.Gif.Urls.Hd,
 							},
 							{
-								Quality: "sd",
+								Quality: "SD",
 								Link:    doc.Gif.Urls.Sd,
 							},
 						},
@@ -431,7 +431,7 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 				default:
 					return nil, &FetchError{
 						NormalError: "",
-						BotError:    "This bot does not support downloading from " + urlObject.(string) + "\nThe url field in json is " + root["url"].(string),
+						BotError:    "This bot doesn’t support downloading from " + urlObject.(string) + "\nThe URL field in JSON is " + root["url"].(string),
 					}
 				}
 			} else {
@@ -443,7 +443,7 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 		default:
 			return nil, &FetchError{
 				NormalError: "",
-				BotError:    "This post type is not supported: " + hint.(string),
+				BotError:    "This type of post is not supported: " + hint.(string),
 			}
 		}
 	} else { // text or gallery

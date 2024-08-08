@@ -24,10 +24,10 @@ func (c *Client) RunBot(token string, allowedUsers AllowedUsers) {
 	if err != nil {
 		log.Fatal("Cannot initialize the bot: ", err.Error())
 	}
-	log.Println("Bot authorized on account", bot.Username)
+	log.Println("Bot authorized on account.", bot.Username)
 	dispatcher := ext.NewDispatcher(&ext.DispatcherOpts{
 		Error: func(_ *gotgbot.Bot, _ *ext.Context, err error) ext.DispatcherAction {
-			log.Println("an error occurred while handling update:", err.Error())
+			log.Println("An error occurred while handling update: ", err.Error())
 			return ext.DispatcherActionNoop
 		},
 		MaxRoutines: ext.DefaultMaxRoutines,
@@ -51,9 +51,9 @@ func (c *Client) RunBot(token string, allowedUsers AllowedUsers) {
 		},
 	})
 	if err != nil {
-		panic("failed to start polling: " + err.Error())
+		panic("Failed to start polling: " + err.Error())
 	}
-	log.Printf("%s has been started...\n", bot.User.Username)
+	log.Printf("%s has been started . . .\n", bot.User.Username)
 
 	// Idle, to keep updates coming in, and avoid bot stopping.
 	updater.Idle()
@@ -62,20 +62,20 @@ func (c *Client) RunBot(token string, allowedUsers AllowedUsers) {
 func (c *Client) handleMessage(bot *gotgbot.Bot, ctx *ext.Context) error {
 	// Only text messages are allowed
 	if ctx.Message.Text == "" {
-		_, err := ctx.EffectiveChat.SendMessage(bot, "Please send the reddit post link to bot", nil)
+		_, err := ctx.EffectiveChat.SendMessage(bot, "Please send a Reddit post.", nil)
 		return err
 	}
 	// Check if the message is command. I don't use command handler because I'll lose
 	// the userID control.
 	switch ctx.Message.Text {
 	case "/start":
-		_, err := ctx.EffectiveChat.SendMessage(bot, "Hello and welcome!\nJust send me the link of the post to download it for you.", nil)
+		_, err := ctx.EffectiveChat.SendMessage(bot, "Hey!\n\nJust send me a post or comment, and I’ll download it for you.", nil)
 		return err
 	case "/about":
-		_, err := ctx.EffectiveChat.SendMessage(bot, "Reddit Downloader Bot v"+common.Version+"\nBy Hirbod Behnam\nSource: https://github.com/HirbodBehnam/RedditDownloaderBot", nil)
+		_, err := ctx.EffectiveChat.SendMessage(bot, "Reddit Downloader Bot v"+common.Version+"\nBy Hirbod Behnam\nSource: https://github.com/mcsaeid/RedditDownloaderBot", nil)
 		return err
 	case "/help":
-		_, err := ctx.EffectiveChat.SendMessage(bot, "Just send me the link of the reddit post or comment. If it's text, I will send the text of the post. If it's a photo or video, I will send the it with the title as caption.", nil)
+		_, err := ctx.EffectiveChat.SendMessage(bot, "You can send me Reddit posts or comments. If it’s text only, I’ll send a text message. If it’s an image or video, I’ll upload and send the content along with the title and link.", nil)
 		return err
 	default:
 		return c.fetchPostDetailsAndSend(bot, ctx)
@@ -87,7 +87,7 @@ func (c *Client) fetchPostDetailsAndSend(bot *gotgbot.Bot, ctx *ext.Context) err
 	result, realPostUrl, fetchErr := c.RedditOauth.StartFetch(ctx.Message.Text)
 	if fetchErr != nil {
 		if fetchErr.NormalError != "" {
-			log.Println("cannot get post ", ctx.Message.Text, ":", fetchErr.NormalError)
+			log.Println("Cannot fetch the post", ctx.Message.Text, ":", fetchErr.NormalError)
 		}
 		_, err := ctx.EffectiveMessage.Reply(bot, fetchErr.BotError, nil)
 		return err
@@ -104,7 +104,7 @@ func (c *Client) fetchPostDetailsAndSend(bot *gotgbot.Bot, ctx *ext.Context) err
 		toSendText = addLinkIfNeeded(data.Text, realPostUrl)
 	case reddit.FetchResultMedia:
 		if len(data.Medias) == 0 {
-			toSendText = "No media found!"
+			toSendText = "No media found."
 			break
 		}
 		// If there is one media quality, download it
@@ -124,7 +124,7 @@ func (c *Client) fetchPostDetailsAndSend(bot *gotgbot.Bot, ctx *ext.Context) err
 			}
 		}
 		// Allow the user to select quality
-		toSendText = "Please select the quality"
+		toSendText = "Please select the quality."
 		idString := util.UUIDToBase64(uuid.New())
 		audioIndex, _ := data.HasAudio()
 		switch data.Type {
@@ -154,7 +154,7 @@ func (c *Client) fetchPostDetailsAndSend(bot *gotgbot.Bot, ctx *ext.Context) err
 		if err != nil {
 			log.Println("Cannot set the album cache in database:", err)
 		}
-		toSendText = "Download album as media or files?"
+		toSendText = "Download album as media or file?"
 		toSendOpt.ReplyMarkup = gotgbot.InlineKeyboardMarkup{
 			InlineKeyboard: [][]gotgbot.InlineKeyboardButton{{
 				gotgbot.InlineKeyboardButton{
@@ -175,7 +175,7 @@ func (c *Client) fetchPostDetailsAndSend(bot *gotgbot.Bot, ctx *ext.Context) err
 		}
 	default:
 		log.Printf("unknown type: %T\n", result)
-		toSendText = "unknown type (report please)"
+		toSendText = "Unknown type (Please report this on the main GitHub project.)"
 	}
 	_, err := ctx.EffectiveMessage.Reply(bot, toSendText, toSendOpt)
 	if err != nil {
@@ -191,7 +191,7 @@ func (c *Client) handleCallback(bot *gotgbot.Bot, ctx *ext.Context) error {
 	defer func() {
 		if r := recover(); r != nil {
 			_, _ = ctx.EffectiveChat.SendMessage(bot, "Cannot get data. (panic)", nil)
-			log.Println("recovering from panic:", r)
+			log.Println("Recovering from panic:", r)
 		}
 	}()
 	// Delete the message
@@ -213,21 +213,21 @@ func (c *Client) handleCallback(bot *gotgbot.Bot, ctx *ext.Context) error {
 			return handleAlbumUpload(bot, album, ctx.EffectiveChat.Id, data.Mode == CallbackButtonDataModeFile)
 		} else if errors.Is(err, cache.NotFoundErr) {
 			// It does not exist...
-			_, err = ctx.EffectiveChat.SendMessage(bot, "Please resend the link to bot", nil)
+			_, err = ctx.EffectiveChat.SendMessage(bot, "Please resend the link.", nil)
 			return err
 		}
 		// Fall to report internal error
 	}
 	// Check other errors
 	if err != nil {
-		log.Println("Cannot get callback id from database:", err)
+		log.Println("Cannot get Callback ID from database:", err)
 		_, err = ctx.EffectiveChat.SendMessage(bot, "Internal error", nil)
 		return err
 	}
 	// Check the link
 	link, exists := cachedData.Links[data.LinkKey]
 	if !exists {
-		_, err = ctx.EffectiveChat.SendMessage(bot, "Please resend the link to bot", nil)
+		_, err = ctx.EffectiveChat.SendMessage(bot, "Please resend the link.", nil)
 		return err
 	}
 	// Check the media type

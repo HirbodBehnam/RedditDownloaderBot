@@ -57,7 +57,7 @@ func createGifInlineKeyboard(id string, medias reddit.FetchResultMedia) gotgbot.
 		}
 		// Add to rows
 		rows[i] = []gotgbot.InlineKeyboardButton{{
-			Text:         "Gif " + media.Quality,
+			Text:         "GIF " + media.Quality,
 			CallbackData: info.String(),
 		}}
 	}

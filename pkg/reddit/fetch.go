@@ -37,7 +37,7 @@ func (o *Oauth) StartFetch(postUrl string) (fetchResult interface{}, realPostUrl
 		if r := recover(); r != nil {
 			fetchError = &FetchError{
 				NormalError: fmt.Sprintf("Recovering from panic in StartFetch. Error encountered: %v; URL: %v", r, postUrl),
-				BotError: "Unable to get the data.\nMaybe a deleted post or invalid URL?",
+				BotError:    "Unable to get the data.\nMaybe a deleted post or invalid URL?",
 			}
 		}
 	}()

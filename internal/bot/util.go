@@ -4,6 +4,7 @@ import (
 	"RedditDownloaderBot/pkg/reddit"
 	"RedditDownloaderBot/pkg/util"
 	"github.com/PaulSonOfLars/gotgbot/v2"
+	"io"
 	"os"
 	"strings"
 )
@@ -97,5 +98,14 @@ func escapeMarkdown(text string) string {
 
 // Create a gotgbot.FileReader from a os.File
 func fileReaderFromOsFile(file *os.File) *gotgbot.FileReader {
-	return &gotgbot.FileReader{Name: file.Name(), Data: file}
+	// Move the file pointer to beginning
+	_, err := file.Seek(0, io.SeekStart)
+	if err != nil {
+		return nil
+	}
+	s, err := file.Stat()
+	if err != nil {
+		return nil
+	}
+	return &gotgbot.FileReader{Name: s.Name(), Data: file}
 }

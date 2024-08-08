@@ -14,11 +14,11 @@ Table of Contents
     * [Run](#run)
   * [Optional Settings](#optional-settings)
     * [Allowed Users](#allowed-users)  
-    * [Disable NSFW Content](disable-nsfw-content)
+    * [Disable NSFW Content](#disable-nsfw-content)
 
 # What this bot can do
 
-* Send Reddit posts and coments as text on Telegram
+* Send Reddit posts and comments as text on Telegram
 * Send images and image galleries hosted on `i.redd.it`
 * Send videos hosted on `v.redd.it`
 * Convert videos to audio only
@@ -48,7 +48,7 @@ Table of Contents
 First, install [FFmpeg](https://www.ffmpeg.org). On Debian or Ubuntu, simply run `apt install ffmpeg`. Then, clone and build the project using the following steps.
 
 ```bash
-git clone https://github.com/mcsaeid/RedditDownloaderBot
+git clone https://github.com/HirbodBehnam/RedditDownloaderBot
 cd RedditDownloaderBot
 go build ./cmd/RedditDownloaderBot/
 ```
@@ -82,9 +82,9 @@ Your token will look something like this:
 Now that you have the necessary tokens, edit the docker-compose.yml file and set the environment variables as such:
 
 ```bash
-CLIENT_ID: "Reddit client ID"
-CLIENT_SECRET: "Reddit client secret"
-BOT_TOKEN: "Telegram bot token"
+export CLIENT_ID=p-jcoLKBynTLew
+export CLIENT_SECRET=gko_LXELoV07ZBNUXrvWZfzE3aI
+export BOT_TOKEN=1234567:4TT8bAc8GHUspu3ERYn-KGcvsvGB9u_n4ddy
 ```
 
 You can run the bot using docker-compose. In case you don’t have docker-compose installed, follow the steps below.
@@ -103,7 +103,7 @@ Lastly, run `docker-compose up --build` inside the RedditDownloaderBot directory
 You can configure the bot to allow access to only a group of users. This is useful for deploying private bots. To do so, you need to create a whitelist that consists of Telegram user IDs. You can obtain user IDs using [GetIDs Bot](https://t.me/getidsbot). Next, create the environment variable `ALLOWED_USERS` and set its value to user IDs, separated by a comma.
 
 ```bash
-ALLOWED_USERS: "1,2,3"
+export ALLOWED_USERS=1,2,3
 ```
 
 ## Disable NSFW Content
@@ -111,7 +111,7 @@ ALLOWED_USERS: "1,2,3"
 You can keep the bot from downloading NSFW posts by setting the following environment variable:
 
 ```bash
-DENY_NSFW: "true"
+export DENY_NSFW=true
 ```
 
 ## Disable Post Link
@@ -119,5 +119,5 @@ DENY_NSFW: "true"
 The post link is included in the caption by default. You can disable it by setting the following environment variable:
 
 ```bash
-DISABLE_LINK_IN_CAPTION: "true"
+export DISABLE_LINK_IN_CAPTION=true
 ```

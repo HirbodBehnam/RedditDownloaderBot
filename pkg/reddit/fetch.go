@@ -37,7 +37,7 @@ func (o *Oauth) StartFetch(postUrl string) (fetchResult interface{}, realPostUrl
 		if r := recover(); r != nil {
 			fetchError = &FetchError{
 				NormalError: fmt.Sprintf("Recovering from panic in StartFetch. Error encountered: %v; URL: %v", r, postUrl),
-				BotError: "Unable to get the data.\nMaybe a deleted post or invalid URL?",
+				BotError:    "Unable to get the data.\nMaybe a deleted post or invalid URL?",
 			}
 		}
 	}()
@@ -246,7 +246,7 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 				if strings.HasPrefix(root["url"].(string), "https://i.imgur.com") { // Example: https://www.reddit.com/r/dankmemes/comments/gag117/you_daughter_of_a_bitch_im_in/
 					gifDownloadUrl := root["url"].(string)
 					lastSlash := strings.LastIndex(gifDownloadUrl, "/")
-					gifDownloadUrl = gifDownloadUrl[:lastSlash+1] + "Download" + gifDownloadUrl[lastSlash:]
+					gifDownloadUrl = gifDownloadUrl[:lastSlash+1] + "download" + gifDownloadUrl[lastSlash:]
 					result.Medias = []FetchResultMediaEntry{{
 						Link:    gifDownloadUrl,
 						Quality: "Imgur", // It doesn't matter
@@ -307,7 +307,7 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 		case "rich:video": // files hosted other than reddit; This bot currently supports Gfycat.com
 			if urlObject, domainExists := root["domain"]; domainExists {
 				switch urlObject.(string) {
-				case "Gfycat.com": // just act like gif
+				case "gfycat.com": // just act like gif
 					images := root["preview"].(map[string]interface{})["images"].([]interface{})[0].(map[string]interface{})
 					if _, hasVariants := images["variants"]; hasVariants {
 						if mp4, hasMp4 := images["variants"].(map[string]interface{})["mp4"]; hasMp4 {

@@ -53,14 +53,14 @@ func main() {
 }
 
 // getAllowedUsers gets the list of users which are allowed to use the bot
-func getAllowedUsers() (allowedIDs []int64) {
+func getAllowedUsers() []int64 {
 	usersString := strings.Split(os.Getenv("ALLOWED_USERS"), ",")
-	allowedIDs = make([]int64, 0, len(usersString))
+	allowedIDs := make([]int64, 0, len(usersString))
 	for _, idString := range usersString {
 		id, err := strconv.ParseInt(idString, 10, 64)
 		if err == nil {
 			allowedIDs = append(allowedIDs, id)
 		}
 	}
-	return
+	return allowedIDs
 }

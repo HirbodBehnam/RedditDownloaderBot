@@ -262,7 +262,7 @@ func TestGetPostId(t *testing.T) {
 			NeedsInternet:     false,
 			ExpectedID:        "",
 			ExpectedIsComment: false,
-			ExpectedError:     "Cannot parse reddit the url. Does your text contain a reddit url?",
+			ExpectedError:     "Unable to parse the URL. Please make sure your message contains a valid Reddit link.",
 		},
 		{
 			TestName:          "Short Url",
@@ -270,7 +270,7 @@ func TestGetPostId(t *testing.T) {
 			NeedsInternet:     false,
 			ExpectedID:        "",
 			ExpectedIsComment: false,
-			ExpectedError:     "Cannot parse reddit the url. Does your text contain a reddit url?",
+			ExpectedError:     "Unable to parse the URL. Please make sure your message contains a valid Reddit link.",
 		},
 		{
 			TestName:          "Short Reddit Url",
@@ -379,7 +379,7 @@ func TestGetCommentFromRoot(t *testing.T) {
 			Expected: FetchResultMedia{
 				Medias: []FetchResultMediaEntry{{
 					Link:    "https://i.giphy.com/media/gVoBC0SuaHStq/giphy.gif",
-					Quality: "giphy",
+					Quality: "Giphy",
 				}},
 				Type:  FetchResultMediaTypeGif,
 				Title: "",
@@ -525,7 +525,7 @@ func TestGetPost(t *testing.T) {
 			ExpectedResult: FetchResultMedia{
 				Medias: []FetchResultMediaEntry{{
 					Link:    "https://i.imgur.com/download/QdBe1Vw.gif",
-					Quality: "imgur",
+					Quality: "Imgur",
 				}},
 				ThumbnailLink: "https://b.thumbs.redditmedia.com/OZVSbT-X1eTPZADOoF4l8ZoYcKC_dWxQ-DTBbdcINLU.jpg",
 				Title:         "You daughter of a bitch, I'm in.",
@@ -569,7 +569,7 @@ func TestGetPost(t *testing.T) {
 			ExpectedResult: nil,
 			ExpectedError: &FetchError{
 				NormalError: "",
-				BotError:    "This bot does not support downloading from youtu.be\nThe url field in json is https://youtu.be/7ILCRfPmQxQ",
+				BotError:    "This bot doesn’t support downloading from youtu.be\nThe URL field in JSON is https://youtu.be/7ILCRfPmQxQ",
 			},
 		},
 		{
@@ -707,7 +707,7 @@ func TestGetPost(t *testing.T) {
 			if test.DashFile.ID != "" {
 				mux := http.NewServeMux()
 				mux.HandleFunc("/"+test.DashFile.ID+"/DASHPlaylist.mpd", func(w http.ResponseWriter, _ *http.Request) {
-					w.Write(test.DashFile.Content)
+					_, _ = w.Write(test.DashFile.Content)
 				})
 				server := httptest.NewServer(mux)
 				defer server.Close()

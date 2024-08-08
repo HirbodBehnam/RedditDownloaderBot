@@ -72,7 +72,7 @@ func (c *Client) handleMessage(bot *gotgbot.Bot, ctx *ext.Context) error {
 		_, err := ctx.EffectiveChat.SendMessage(bot, "Hey!\n\nJust send me a post or comment, and I’ll download it for you.", nil)
 		return err
 	case "/about":
-		_, err := ctx.EffectiveChat.SendMessage(bot, "Reddit Downloader Bot v"+common.Version+"\nBy Hirbod Behnam\nSource: https://github.com/mcsaeid/RedditDownloaderBot", nil)
+		_, err := ctx.EffectiveChat.SendMessage(bot, "Reddit Downloader Bot v"+common.Version+"\nBy Hirbod Behnam\nSource: https://github.com/HirbodBehnam/RedditDownloaderBot", nil)
 		return err
 	case "/help":
 		_, err := ctx.EffectiveChat.SendMessage(bot, "You can send me Reddit posts or comments. If it’s text only, I’ll send a text message. If it’s an image or video, I’ll upload and send the content along with the title and link.", nil)

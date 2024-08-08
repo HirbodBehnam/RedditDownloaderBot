@@ -707,7 +707,7 @@ func TestGetPost(t *testing.T) {
 			if test.DashFile.ID != "" {
 				mux := http.NewServeMux()
 				mux.HandleFunc("/"+test.DashFile.ID+"/DASHPlaylist.mpd", func(w http.ResponseWriter, _ *http.Request) {
-					w.Write(test.DashFile.Content)
+					_, _ = w.Write(test.DashFile.Content)
 				})
 				server := httptest.NewServer(mux)
 				defer server.Close()

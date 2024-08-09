@@ -45,10 +45,18 @@ func handleGifUpload(bot *gotgbot.Bot, gifUrl, title, thumbnailUrl, postUrl stri
 			}()
 		}
 	}
+	// Check dimension
+	dimensions, err := reddit.GetVideoDimensions(tmpFile.Name())
+	if err != nil {
+		log.Println("Cannot get dimensions:", err)
+	}
+	log.Println(dimensions)
 	// Upload it
 	animationOpt := &gotgbot.SendAnimationOpts{
 		Caption:   addLinkIfNeeded(escapeMarkdown(title), postUrl),
 		ParseMode: gotgbot.ParseModeMarkdownV2,
+		Width:     dimensions.Width,
+		Height:    dimensions.Height,
 	}
 	if tmpThumbnailFile != nil {
 		animationOpt.Thumbnail = fileReaderFromOsFile(tmpThumbnailFile)
@@ -97,12 +105,19 @@ func handleVideoUpload(bot *gotgbot.Bot, vidUrl, audioUrl, title, thumbnailUrl, 
 			}()
 		}
 	}
+	// Check dimension
+	dimensions, err := reddit.GetVideoDimensions(tmpFile.Name())
+	if err != nil {
+		log.Println("Cannot get dimensions:", err)
+	}
 	// Upload it
 	videoOpt := &gotgbot.SendVideoOpts{
 		Duration:          duration,
 		Caption:           addLinkIfNeeded(escapeMarkdown(title), postUrl),
 		ParseMode:         gotgbot.ParseModeMarkdownV2,
 		SupportsStreaming: true,
+		Width:             dimensions.Width,
+		Height:            dimensions.Height,
 	}
 	if tmpThumbnailFile != nil {
 		videoOpt.Thumbnail = fileReaderFromOsFile(tmpThumbnailFile)

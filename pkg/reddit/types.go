@@ -111,3 +111,9 @@ type FetchResultAlbumEntry struct {
 type FetchResultAlbum struct {
 	Album []FetchResultAlbumEntry
 }
+
+// Dimension of a media
+type Dimension struct {
+	Width  int64
+	Height int64
+}

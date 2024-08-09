@@ -75,12 +75,12 @@ func parseRedisJson[T any](val string, err error) (T, error) {
 	if err == redis.Nil {
 		return result, NotFoundErr
 	} else if err != nil {
-		return result, errors.Wrap(err, "cannot get data from redis")
+		return result, errors.Wrap(err, "Unable to fetch data from Redis")
 	}
 	// Parse the json
 	err = json.NewDecoder(strings.NewReader(val)).Decode(&result)
 	if err != nil {
-		return result, errors.Wrap(err, "cannot parse json")
+		return result, errors.Wrap(err, "Unable to parse JSON")
 	}
 	return result, nil
 }

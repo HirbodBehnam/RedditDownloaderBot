@@ -17,7 +17,7 @@ type CallbackDataCached struct {
 	// If there is no audio, this must be -1
 	AudioIndex int
 	// The duration of video
-	Duration int
+	Duration int64
 	// What media is this
 	Type reddit.FetchResultMediaType
 }

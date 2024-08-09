@@ -3,7 +3,7 @@ package bot
 import (
 	"RedditDownloaderBot/pkg/reddit"
 	"RedditDownloaderBot/pkg/util"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/PaulSonOfLars/gotgbot/v2"
 	"io"
 	"os"
 	"strings"
@@ -19,29 +19,35 @@ var markdownEscaper = strings.NewReplacer("_", "\\_", "*", "\\*", "[", "\\[", "]
 // createPhotoInlineKeyboard creates inline keyboards to get the quality info of a photo
 // Each row represents a quality and each row has two columns: Send as photo or send as file
 // The id must match the ID in the mediaCache
-func createPhotoInlineKeyboard(id string, medias reddit.FetchResultMedia) tgbotapi.InlineKeyboardMarkup {
-	rows := make([][]tgbotapi.InlineKeyboardButton, len(medias.Medias))
+func createPhotoInlineKeyboard(id string, medias reddit.FetchResultMedia) gotgbot.InlineKeyboardMarkup {
+	rows := make([][]gotgbot.InlineKeyboardButton, len(medias.Medias))
 	for i, media := range medias.Medias {
-		column := make([]tgbotapi.InlineKeyboardButton, 2)
+		column := make([]gotgbot.InlineKeyboardButton, 2)
 		// One button to download as photo
 		info := CallbackButtonData{
 			ID:      id,
 			LinkKey: i,
 			Mode:    CallbackButtonDataModePhoto,
 		}
-		column[0] = tgbotapi.NewInlineKeyboardButtonData("Photo "+media.Quality, info.String())
+		column[0] = gotgbot.InlineKeyboardButton{
+			Text:         "Photo " + media.Quality,
+			CallbackData: info.String(),
+		}
 		// One button to download as file
 		info.Mode = CallbackButtonDataModeFile
-		column[1] = tgbotapi.NewInlineKeyboardButtonData("File "+media.Quality, info.String())
+		column[1] = gotgbot.InlineKeyboardButton{
+			Text:         "File " + media.Quality,
+			CallbackData: info.String(),
+		}
 		// Add to rows
 		rows[i] = column
 	}
-	return tgbotapi.InlineKeyboardMarkup{InlineKeyboard: rows}
+	return gotgbot.InlineKeyboardMarkup{InlineKeyboard: rows}
 }
 
 // createGifInlineKeyboard creates an inline keyboard for downloading gifs based on given reddit.FetchResultMedia
-func createGifInlineKeyboard(id string, medias reddit.FetchResultMedia) tgbotapi.InlineKeyboardMarkup {
-	rows := make([][]tgbotapi.InlineKeyboardButton, len(medias.Medias))
+func createGifInlineKeyboard(id string, medias reddit.FetchResultMedia) gotgbot.InlineKeyboardMarkup {
+	rows := make([][]gotgbot.InlineKeyboardButton, len(medias.Medias))
 	for i, media := range medias.Medias {
 		// One button to download as gif only
 		// They don't support the file format
@@ -50,14 +56,17 @@ func createGifInlineKeyboard(id string, medias reddit.FetchResultMedia) tgbotapi
 			LinkKey: i,
 		}
 		// Add to rows
-		rows[i] = []tgbotapi.InlineKeyboardButton{tgbotapi.NewInlineKeyboardButtonData("Gif "+media.Quality, info.String())}
+		rows[i] = []gotgbot.InlineKeyboardButton{{
+			Text:         "GIF " + media.Quality,
+			CallbackData: info.String(),
+		}}
 	}
-	return tgbotapi.InlineKeyboardMarkup{InlineKeyboard: rows}
+	return gotgbot.InlineKeyboardMarkup{InlineKeyboard: rows}
 }
 
 // createVideoInlineKeyboard creates an inline keyboard for downloading gifs based on given reddit.FetchResultMedia
-func createVideoInlineKeyboard(id string, medias reddit.FetchResultMedia) tgbotapi.InlineKeyboardMarkup {
-	rows := make([][]tgbotapi.InlineKeyboardButton, len(medias.Medias))
+func createVideoInlineKeyboard(id string, medias reddit.FetchResultMedia) gotgbot.InlineKeyboardMarkup {
+	rows := make([][]gotgbot.InlineKeyboardButton, len(medias.Medias))
 	for i, media := range medias.Medias {
 		// One button to download as gif only
 		// They don't support the file format
@@ -66,9 +75,12 @@ func createVideoInlineKeyboard(id string, medias reddit.FetchResultMedia) tgbota
 			LinkKey: i,
 		}
 		// Add to rows
-		rows[i] = []tgbotapi.InlineKeyboardButton{tgbotapi.NewInlineKeyboardButtonData(media.Quality, info.String())}
+		rows[i] = []gotgbot.InlineKeyboardButton{{
+			Text:         media.Quality,
+			CallbackData: info.String(),
+		}}
 	}
-	return tgbotapi.InlineKeyboardMarkup{InlineKeyboard: rows}
+	return gotgbot.InlineKeyboardMarkup{InlineKeyboard: rows}
 }
 
 // Adds the link of the post to a text if needed (the INCLUDE_LINK is set)
@@ -84,29 +96,16 @@ func escapeMarkdown(text string) string {
 	return markdownEscaper.Replace(text)
 }
 
-// telegramUploadOsFile is wrapper for os.File in order to make it uploadable in Telegram
-type telegramUploadOsFile struct {
-	*os.File
-}
-
-func (f telegramUploadOsFile) NeedsUpload() bool {
-	return true
-}
-
-func (f telegramUploadOsFile) UploadData() (string, io.Reader, error) {
+// Create a gotgbot.FileReader from a os.File
+func fileReaderFromOsFile(file *os.File) *gotgbot.FileReader {
 	// Move the file pointer to beginning
-	_, err := f.Seek(0, io.SeekStart)
+	_, err := file.Seek(0, io.SeekStart)
 	if err != nil {
-		return "", nil, err
+		return nil
 	}
-	// Note: I can use io.NopCloser in order to make the bot not close the file
-	s, err := f.Stat()
+	s, err := file.Stat()
 	if err != nil {
-		return "", nil, err
+		return nil
 	}
-	return s.Name(), f, nil
-}
-
-func (f telegramUploadOsFile) SendData() string {
-	panic("telegramUploadOsFile must be uploaded")
+	return &gotgbot.FileReader{Name: s.Name(), Data: file}
 }

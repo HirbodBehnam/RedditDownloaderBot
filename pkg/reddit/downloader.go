@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"strconv"
 )
 
 // We don't download anything more than this size
@@ -39,7 +40,7 @@ func DownloadPhoto(link string) (*os.File, error) {
 	// Download the file
 	err = downloadToFile(link, tmpFile)
 	if err != nil {
-		os.Remove(tmpFile.Name())
+		_ = os.Remove(tmpFile.Name())
 		return nil, errors.Wrap(err, "Unable to download the file")
 	}
 	// We are good
@@ -58,8 +59,8 @@ func DownloadVideo(vidUrl, audioUrl string) (videoFile *os.File, err error) {
 	defer func() {
 		// Only delete the video file if error is not nil
 		if err != nil {
-			videoFile.Close()
-			os.Remove(videoFile.Name())
+			_ = videoFile.Close()
+			_ = os.Remove(videoFile.Name())
 		}
 	}()
 	err = downloadToFile(vidUrl, videoFile)
@@ -76,8 +77,8 @@ func DownloadVideo(vidUrl, audioUrl string) (videoFile *os.File, err error) {
 	}
 	// We don't need audio file anyway
 	defer func() {
-		audFile.Close()
-		os.Remove(audFile.Name())
+		_ = audFile.Close()
+		_ = os.Remove(audFile.Name())
 	}()
 	if hasAudio {
 		if downloadToFile(audioUrl, audFile) != nil {
@@ -108,16 +109,16 @@ func DownloadVideo(vidUrl, audioUrl string) (videoFile *os.File, err error) {
 		err = cmd.Run()
 		if err != nil {
 			log.Println("Unable to convert the video:", err, "\n", stderr.String())
-			finalFile.Close()
-			os.Remove(finalFile.Name())
+			_ = finalFile.Close()
+			_ = os.Remove(finalFile.Name())
 			// We don't return error here
 			err = nil
 			return videoFile, nil
 		}
 		// If we have reached here, it means that the conversion was fine
 		// So we swap the final file with video file and delete the video file
-		videoFile.Close()
-		os.Remove(videoFile.Name())
+		_ = videoFile.Close()
+		_ = os.Remove(videoFile.Name())
 		videoFile = finalFile
 	}
 	// No we can return the video file
@@ -133,8 +134,8 @@ func DownloadGif(link string) (*os.File, error) {
 	}
 	err = downloadToFile(link, tmpFile)
 	if err != nil {
-		tmpFile.Close()
-		os.Remove(tmpFile.Name())
+		_ = tmpFile.Close()
+		_ = os.Remove(tmpFile.Name())
 		return nil, err
 	}
 	return tmpFile, nil
@@ -150,8 +151,8 @@ func DownloadThumbnail(link string) (*os.File, error) {
 	// Download to file
 	err = downloadToFile(link, tmpFile)
 	if err != nil {
-		tmpFile.Close()
-		os.Remove(tmpFile.Name())
+		_ = tmpFile.Close()
+		_ = os.Remove(tmpFile.Name())
 		return nil, err
 	}
 	// We are good
@@ -168,12 +169,48 @@ func DownloadAudio(audioUrl string) (*os.File, error) {
 	// Download to file
 	err = downloadToFile(audioUrl, tmpFile)
 	if err != nil {
-		tmpFile.Close()
-		os.Remove(tmpFile.Name())
+		_ = tmpFile.Close()
+		_ = os.Remove(tmpFile.Name())
 		return nil, err
 	}
 	// We are good
 	return tmpFile, nil
+}
+
+// GetVideoDimensions will get the width and height of a media file.
+// If the width and height could not be determined, zero will be returned
+// for both width and height.
+func GetVideoDimensions(filename string) (Dimension, error) {
+	if !util.DoesFfmpegExists() {
+		return Dimension{}, nil
+	}
+	cmd := exec.Command("ffprobe",
+		"-v", "error",
+		"-select_streams", "v:0",
+		"-show_entries", "stream=width,height",
+		"-of", "csv=s=x:p=0",
+		filename)
+	stderr := new(bytes.Buffer)
+	cmd.Stderr = stderr
+	output, err := cmd.Output()
+	if err != nil {
+		return Dimension{}, errors.Wrap(errors.New(stderr.String()), "Unable to get the file dimensions")
+	}
+	// Parse the output
+	var result Dimension
+	splitDim := bytes.Split(bytes.TrimSpace(output), []byte("x"))
+	if len(splitDim) != 2 {
+		return Dimension{}, errors.Wrap(errors.New(string(output)), "Invalid dimensions")
+	}
+	result.Width, err = strconv.ParseInt(string(splitDim[0]), 10, 64)
+	if err != nil {
+		return Dimension{}, errors.Wrap(err, "Cannot parse width")
+	}
+	result.Height, err = strconv.ParseInt(string(splitDim[1]), 10, 64)
+	if err != nil {
+		return Dimension{}, errors.Wrap(err, "Cannot parse height")
+	}
+	return result, nil
 }
 
 // downloadToFile downloads a link to a file

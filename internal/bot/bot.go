@@ -46,7 +46,7 @@ func (c *Client) RunBot(token string, allowedUsers AllowedUsers) {
 		GetUpdatesOpts: &gotgbot.GetUpdatesOpts{
 			Timeout: 60,
 			RequestOpts: &gotgbot.RequestOpts{
-				Timeout: time.Second * 10,
+				Timeout: time.Second * 60,
 			},
 		},
 	})

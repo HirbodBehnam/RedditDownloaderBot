@@ -700,6 +700,40 @@ func TestGetPost(t *testing.T) {
 			}},
 			ExpectedError: nil,
 		},
+		{
+			TestName: "Thumbnail",
+			PostUrl:  "https://www.reddit.com/r/me_irl/comments/1equo0f/me_irl/",
+			Root:     []byte(`{"kind": "Listing", "data": {"after": null, "dist": 1, "modhash": "9aybqvrbai0a9a4fc14dee1cba670a86a8fc5b0e1fd8c3cff9", "geo_filter": "", "children": [{"kind": "t3", "data": {"approved_at_utc": null, "subreddit": "me_irl", "selftext": "Female pheasant wasn't enchanted by his performance, but he hefuses to give up and keeps doing his mating dance . ", "author_fullname": "t2_zy52eab0g", "saved": false, "mod_reason_title": null, "gilded": 0, "clicked": false, "title": "me_irl", "link_flair_richtext": [], "subreddit_name_prefixed": "r/me_irl", "hidden": false, "pwls": 6, "link_flair_css_class": null, "downs": 0, "thumbnail_height": 140, "top_awarded_type": null, "hide_score": false, "name": "t3_1equo0f", "quarantine": false, "link_flair_text_color": "dark", "upvote_ratio": 0.98, "author_flair_background_color": null, "subreddit_type": "public", "ups": 1003, "total_awards_received": 0, "media_embed": {}, "thumbnail_width": 140, "author_flair_template_id": null, "is_original_content": false, "user_reports": [], "secure_media": {"reddit_video": {"bitrate_kbps": 1200, "fallback_url": "https://v.redd.it/617fdb3axbid1/DASH_480.mp4?source=fallback", "has_audio": true, "height": 688, "width": 480, "scrubber_media_url": "https://v.redd.it/617fdb3axbid1/DASH_96.mp4", "dash_url": "https://v.redd.it/617fdb3axbid1/DASHPlaylist.mpd?a=1726148041%2CNjFhNjZjY2U1ZWQ5OTc3MjgzMjA5MjBmMjU1OWEwNTY1MzNkMzUwMjUxMzhmZGE5NjgxYTdhYjA2NDA1YzFiZA%3D%3D&amp;v=1&amp;f=sd", "duration": 23, "hls_url": "https://v.redd.it/617fdb3axbid1/HLSPlaylist.m3u8?a=1726148041%2COGQzMjk4ZDZjNjU0ZGViNWM0OTYxNmQwYjdjZTFmZjhhMjc4ZjBhYmE4NDhlZTVkMjU0YzhlYjM3ZWVlOTkxMA%3D%3D&amp;v=1&amp;f=sd", "is_gif": false, "transcoding_status": "completed"}}, "is_reddit_media_domain": true, "is_meta": false, "category": null, "secure_media_embed": {}, "link_flair_text": null, "can_mod_post": false, "score": 1003, "approved_by": null, "is_created_from_ads_ui": false, "author_premium": false, "thumbnail": "https://external-preview.redd.it/eHhsa3JrdDl4YmlkMYG42k61zUHLZWYmXgKxVFtbkqT2ytev2qoJoAjMPjdm.png?width=140&amp;height=140&amp;crop=140:140,smart&amp;format=jpg&amp;v=enabled&amp;lthumb=true&amp;s=9a47bfd51801d34da41a40004c6d5217a3136e6a", "edited": false, "author_flair_css_class": null, "author_flair_richtext": [], "gildings": {}, "post_hint": "hosted:video", "content_categories": null, "is_self": false, "mod_note": null, "created": 1723510398.0, "link_flair_type": "text", "wls": 6, "removed_by_category": null, "banned_by": null, "author_flair_type": "text", "domain": "v.redd.it", "allow_live_comments": false, "selftext_html": "&lt;!-- SC_OFF --&gt;&lt;div class=\"md\"&gt;&lt;p&gt;Female pheasant wasn&amp;#39;t enchanted by his performance, but he hefuses to give up and keeps doing his mating dance . &lt;/p&gt;\n&lt;/div&gt;&lt;!-- SC_ON --&gt;", "likes": true, "suggested_sort": null, "banned_at_utc": null, "url_overridden_by_dest": "https://v.redd.it/617fdb3axbid1", "view_count": null, "archived": false, "no_follow": false, "is_crosspostable": true, "pinned": false, "over_18": false, "preview": {"images": [{"source": {"url": "https://external-preview.redd.it/eHhsa3JrdDl4YmlkMYG42k61zUHLZWYmXgKxVFtbkqT2ytev2qoJoAjMPjdm.png?format=pjpg&amp;auto=webp&amp;s=892d3a60ccd4d1a602637f0ffb974645fe1cea09", "width": 480, "height": 688}, "resolutions": [{"url": "https://external-preview.redd.it/eHhsa3JrdDl4YmlkMYG42k61zUHLZWYmXgKxVFtbkqT2ytev2qoJoAjMPjdm.png?width=108&amp;crop=smart&amp;format=pjpg&amp;auto=webp&amp;s=22ac39cc4f2bdd67116162c394bebc2874d4fe12", "width": 108, "height": 154}, {"url": "https://external-preview.redd.it/eHhsa3JrdDl4YmlkMYG42k61zUHLZWYmXgKxVFtbkqT2ytev2qoJoAjMPjdm.png?width=216&amp;crop=smart&amp;format=pjpg&amp;auto=webp&amp;s=2a9950deba37336669de14f1a7de42427afd560d", "width": 216, "height": 309}, {"url": "https://external-preview.redd.it/eHhsa3JrdDl4YmlkMYG42k61zUHLZWYmXgKxVFtbkqT2ytev2qoJoAjMPjdm.png?width=320&amp;crop=smart&amp;format=pjpg&amp;auto=webp&amp;s=d3867b893511c0659c4cd169013e3aead0a424e4", "width": 320, "height": 458}], "variants": {}, "id": "eHhsa3JrdDl4YmlkMYG42k61zUHLZWYmXgKxVFtbkqT2ytev2qoJoAjMPjdm"}], "enabled": false}, "all_awardings": [], "awarders": [], "media_only": false, "can_gild": false, "spoiler": false, "locked": false, "author_flair_text": null, "treatment_tags": [], "visited": false, "removed_by": null, "num_reports": null, "distinguished": null, "subreddit_id": "t5_2vegg", "author_is_blocked": false, "mod_reason_by": null, "removal_reason": null, "link_flair_background_color": "", "id": "1equo0f", "is_robot_indexable": true, "report_reasons": null, "author": "CuteGrayRhino", "discussion_type": null, "num_comments": 40, "send_replies": true, "whitelist_status": "all_ads", "contest_mode": false, "mod_reports": [], "author_patreon_flair": false, "author_flair_text_color": null, "permalink": "/r/me_irl/comments/1equo0f/me_irl/", "parent_whitelist_status": "all_ads", "stickied": false, "url": "https://v.redd.it/617fdb3axbid1", "subreddit_subscribers": 7627403, "created_utc": 1723510398.0, "num_crossposts": 0, "media": {"reddit_video": {"bitrate_kbps": 1200, "fallback_url": "https://v.redd.it/617fdb3axbid1/DASH_480.mp4?source=fallback", "has_audio": true, "height": 688, "width": 480, "scrubber_media_url": "https://v.redd.it/617fdb3axbid1/DASH_96.mp4", "dash_url": "https://v.redd.it/617fdb3axbid1/DASHPlaylist.mpd?a=1726148041%2CNjFhNjZjY2U1ZWQ5OTc3MjgzMjA5MjBmMjU1OWEwNTY1MzNkMzUwMjUxMzhmZGE5NjgxYTdhYjA2NDA1YzFiZA%3D%3D&amp;v=1&amp;f=sd", "duration": 23, "hls_url": "https://v.redd.it/617fdb3axbid1/HLSPlaylist.m3u8?a=1726148041%2COGQzMjk4ZDZjNjU0ZGViNWM0OTYxNmQwYjdjZTFmZjhhMjc4ZjBhYmE4NDhlZTVkMjU0YzhlYjM3ZWVlOTkxMA%3D%3D&amp;v=1&amp;f=sd", "is_gif": false, "transcoding_status": "completed"}}, "is_video": true}}], "before": null}}`),
+			ExpectedResult: FetchResultMedia{
+				Medias: FetchResultMediaEntries{
+					FetchResultMediaEntry{
+						Link:    "https://v.redd.it/617fdb3axbid1/DASH_480.mp4",
+						Quality: "480p",
+					},
+					FetchResultMediaEntry{
+						Link:    "https://v.redd.it/617fdb3axbid1/DASH_360.mp4",
+						Quality: "360p",
+					},
+					FetchResultMediaEntry{
+						Link:    "https://v.redd.it/617fdb3axbid1/DASH_270.mp4",
+						Quality: "270p",
+					},
+					FetchResultMediaEntry{
+						Link:    "https://v.redd.it/617fdb3axbid1/DASH_220.mp4",
+						Quality: "220p",
+					},
+					FetchResultMediaEntry{
+						Link:    "https://v.redd.it/617fdb3axbid1/DASH_AUDIO_128.mp4",
+						Quality: "Audio",
+					},
+				},
+				ThumbnailLink: "https://external-preview.redd.it/eHhsa3JrdDl4YmlkMYG42k61zUHLZWYmXgKxVFtbkqT2ytev2qoJoAjMPjdm.png?width=140&height=140&crop=140:140,smart&format=jpg&v=enabled&lthumb=true&s=9a47bfd51801d34da41a40004c6d5217a3136e6a",
+				Title:         "me_irl",
+				Duration:      23,
+				Type:          FetchResultMediaTypeVideo,
+			},
+			ExpectedError: nil,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.TestName, func(t *testing.T) {

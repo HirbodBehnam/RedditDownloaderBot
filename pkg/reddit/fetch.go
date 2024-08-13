@@ -219,7 +219,7 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 	// Check thumbnail; This must be done before checking cross posts
 	thumbnailUrl := ""
 	if t, ok := root["thumbnail"]; ok {
-		thumbnailUrl = t.(string)
+		thumbnailUrl = html.UnescapeString(t.(string))
 		// Check the url; Sometimes, the value of this is default
 		if !util.IsUrl(thumbnailUrl) {
 			thumbnailUrl = ""

@@ -2,12 +2,12 @@ package reddit
 
 import (
 	"RedditDownloaderBot/pkg/common"
-	"bytes"
 	"encoding/json"
 	"github.com/go-faster/errors"
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -94,16 +94,15 @@ func (o *Oauth) createToken() (time.Duration, error) {
 	if err != nil {
 		return 0, errors.Wrap(err, "cannot do the request")
 	}
+	defer resp.Body.Close()
 	// Parse the response
 	if resp.StatusCode != http.StatusOK {
-		buffer := new(bytes.Buffer)
-		io.CopyN(buffer, resp.Body, 100) // 100 chars is ok right?
-		resp.Body.Close()
-		return 0, errors.Wrapf(err, "status code is not 200. It is %s. Body starts with: %s", resp.Status, buffer.String())
+		buffer := make([]byte, 100) // 100 chars is ok right?
+		n, _ := resp.Body.Read(buffer)
+		return 0, errors.Wrapf(err, "status code is not 200. It is %s. Body starts with: %s", resp.Status, string(buffer[:n]))
 	}
 	var body tokenRequestResponse
 	err = json.NewDecoder(resp.Body).Decode(&body)
-	resp.Body.Close()
 	if err != nil {
 		return 0, errors.Wrap(err, "cannot parse response")
 	}
@@ -128,7 +127,7 @@ func (o *Oauth) FollowRedirect(u string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	return resp.Request.URL.String(), nil
 }
 
@@ -149,17 +148,16 @@ func (o *Oauth) doGetJsonRequest(Url string) (map[string]interface{}, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot do the request")
 	}
+	defer resp.Body.Close()
 	// Check the rate limit
 	if rateLimit, err := strconv.Atoi(resp.Header.Get("X-Ratelimit-Remaining")); err == nil && rateLimit == 0 {
 		freedom, _ := strconv.Atoi(resp.Header.Get("X-Ratelimit-Reset"))
 		atomic.StoreInt64(&o.rateLimitFreedom, time.Now().Unix()+int64(freedom))
-		resp.Body.Close()
 		return nil, RateLimitErr
 	}
 	// Read the body
 	var responseBody map[string]interface{}
 	err = json.NewDecoder(resp.Body).Decode(&responseBody)
-	resp.Body.Close()
 	return responseBody, err
 }
 
@@ -177,4 +175,35 @@ func (o *Oauth) head(Url string) (*http.Response, error) {
 	req.Header.Set("User-Agent", userAgent)
 	req.Header.Set("Authorization", o.authorizationHeader)
 	return common.GlobalHttpClient.Do(req)
+}
+
+// downloadToFile downloads a link to a file
+// It also checks where the file is too big to be uploaded to Telegram or not
+// If the file is too big, it returns FileTooBigError
+func (o *Oauth) downloadToFile(link string, f *os.File) error {
+	// Check rate limit
+	if time.Now().Unix() < atomic.LoadInt64(&o.rateLimitFreedom) {
+		return RateLimitErr
+	}
+	// Build the request
+	req, err := http.NewRequest("GET", link, nil)
+	if err != nil {
+		return errors.Wrap(err, "cannot create request")
+	}
+	resp, err := common.GlobalHttpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusForbidden {
+		return errors.New("Forbidden")
+	}
+	if resp.ContentLength == -1 {
+		return errors.New("Unknown length")
+	}
+	if resp.ContentLength > maxDownloadSize {
+		return FileTooBigError
+	}
+	_, err = io.Copy(f, resp.Body)
+	return err
 }

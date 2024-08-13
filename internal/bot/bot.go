@@ -112,12 +112,12 @@ func (c *Client) fetchPostDetailsAndSend(bot *gotgbot.Bot, ctx *ext.Context) err
 		if len(data.Medias) == 1 && data.Type != reddit.FetchResultMediaTypePhoto {
 			switch data.Type {
 			case reddit.FetchResultMediaTypeGif:
-				return handleGifUpload(bot, data.Medias[0].Link, data.Title, data.ThumbnailLink, realPostUrl, ctx.EffectiveChat.Id)
+				return c.handleGifUpload(bot, data.Medias[0].Link, data.Title, data.ThumbnailLink, realPostUrl, ctx.EffectiveChat.Id)
 			case reddit.FetchResultMediaTypeVideo:
 				// If the video does have an audio, ask user if they want the audio
 				if _, hasAudio := data.HasAudio(); !hasAudio {
 					// Otherwise, just download the video
-					return handleVideoUpload(bot, data.Medias[0].Link, "", data.Title, data.ThumbnailLink, realPostUrl, data.Duration, ctx.EffectiveChat.Id)
+					return c.handleVideoUpload(bot, data.Medias[0].Link, "", data.Title, data.ThumbnailLink, realPostUrl, data.Duration, ctx.EffectiveChat.Id)
 				}
 			default:
 				panic("Shash")
@@ -210,7 +210,7 @@ func (c *Client) handleCallback(bot *gotgbot.Bot, ctx *ext.Context) error {
 		var album reddit.FetchResultAlbum
 		album, err = c.CallbackCache.GetAndDeleteAlbumCache(data.ID)
 		if err == nil {
-			return handleAlbumUpload(bot, album, ctx.EffectiveChat.Id, data.Mode == CallbackButtonDataModeFile)
+			return c.handleAlbumUpload(bot, album, ctx.EffectiveChat.Id, data.Mode == CallbackButtonDataModeFile)
 		} else if errors.Is(err, cache.NotFoundErr) {
 			// It does not exist...
 			_, err = ctx.EffectiveChat.SendMessage(bot, "Please resend the link.", nil)
@@ -233,15 +233,15 @@ func (c *Client) handleCallback(bot *gotgbot.Bot, ctx *ext.Context) error {
 	// Check the media type
 	switch cachedData.Type {
 	case reddit.FetchResultMediaTypeGif:
-		return handleGifUpload(bot, link, cachedData.Title, cachedData.ThumbnailLink, cachedData.PostLink, ctx.EffectiveChat.Id)
+		return c.handleGifUpload(bot, link, cachedData.Title, cachedData.ThumbnailLink, cachedData.PostLink, ctx.EffectiveChat.Id)
 	case reddit.FetchResultMediaTypePhoto:
-		return handlePhotoUpload(bot, link, cachedData.Title, cachedData.ThumbnailLink, cachedData.PostLink, ctx.EffectiveChat.Id, data.Mode == CallbackButtonDataModePhoto)
+		return c.handlePhotoUpload(bot, link, cachedData.Title, cachedData.ThumbnailLink, cachedData.PostLink, ctx.EffectiveChat.Id, data.Mode == CallbackButtonDataModePhoto)
 	case reddit.FetchResultMediaTypeVideo:
 		if data.LinkKey == cachedData.AudioIndex {
-			return handleAudioUpload(bot, link, cachedData.Title, cachedData.PostLink, cachedData.Duration, ctx.EffectiveChat.Id)
+			return c.handleAudioUpload(bot, link, cachedData.Title, cachedData.PostLink, cachedData.Duration, ctx.EffectiveChat.Id)
 		} else {
 			audioURL := cachedData.Links[cachedData.AudioIndex]
-			return handleVideoUpload(bot, link, audioURL, cachedData.Title, cachedData.ThumbnailLink, cachedData.PostLink, cachedData.Duration, ctx.EffectiveChat.Id)
+			return c.handleVideoUpload(bot, link, audioURL, cachedData.Title, cachedData.ThumbnailLink, cachedData.PostLink, cachedData.Duration, ctx.EffectiveChat.Id)
 		}
 	}
 	// What

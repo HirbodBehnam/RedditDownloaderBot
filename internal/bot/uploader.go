@@ -3,248 +3,257 @@ package bot
 import (
 	"RedditDownloaderBot/pkg/reddit"
 	"RedditDownloaderBot/pkg/util"
+	"github.com/PaulSonOfLars/gotgbot/v2"
 	"log"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/go-faster/errors"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 // handleGifUpload downloads a gif and then uploads it to Telegram
-func handleGifUpload(gifUrl, title, thumbnailUrl, postUrl string, chatID int64) {
+func (c *Client) handleGifUpload(bot *gotgbot.Bot, gifUrl, title, thumbnailUrl, postUrl string, chatID int64) error {
 	// Inform the user we are doing some shit
-	stopReportChannel := statusReporter(chatID, "upload_video")
+	stopReportChannel := statusReporter(bot, chatID, "upload_video")
 	defer close(stopReportChannel)
 	// Download the gif
-	tmpFile, err := reddit.DownloadGif(gifUrl)
+	tmpFile, err := c.RedditOauth.DownloadGif(gifUrl)
 	if err != nil {
-		log.Println("Cannot download file", gifUrl, ":", err)
-		bot.Send(tgbotapi.NewMessage(chatID, "Cannot download file.\nHere is the link to file: "+gifUrl))
-		return
+		log.Println("Unable to download", gifUrl, ":", err)
+		_, err = bot.SendMessage(chatID, "I couldn’t download this GIF.\nHere is the link: "+gifUrl, nil)
+		return err
 	}
 	defer func() { // Cleanup
-		tmpFile.Close()
-		os.Remove(tmpFile.Name())
+		_ = tmpFile.Close()
+		_ = os.Remove(tmpFile.Name())
 	}()
 	// Upload the gif
 	// Check file size
 	if !util.CheckFileSize(tmpFile.Name(), RegularMaxUploadSize) {
-		bot.Send(tgbotapi.NewMessage(chatID, "This file is too big to upload it on telegram!\nHere is the link to file: "+gifUrl))
-		return
+		_, err = bot.SendMessage(chatID, "The file is too large to upload on Telegram.\nHere is the link: "+gifUrl, nil)
+		return err
 	}
 	// Check thumbnail
 	var tmpThumbnailFile *os.File = nil
 	if !util.CheckFileSize(tmpFile.Name(), NoThumbnailNeededSize) && thumbnailUrl != "" {
-		tmpThumbnailFile, err = reddit.DownloadThumbnail(thumbnailUrl)
+		tmpThumbnailFile, err = c.RedditOauth.DownloadThumbnail(thumbnailUrl)
 		if err == nil {
 			defer func() {
-				tmpThumbnailFile.Close()
-				os.Remove(tmpThumbnailFile.Name())
+				_ = tmpThumbnailFile.Close()
+				_ = os.Remove(tmpThumbnailFile.Name())
 			}()
 		}
 	}
-	// Upload it
-	msg := tgbotapi.NewAnimation(chatID, telegramUploadOsFile{tmpFile})
-	msg.Caption = addLinkIfNeeded(escapeMarkdown(title), postUrl)
-	msg.ParseMode = MarkdownV2
-	if tmpThumbnailFile != nil {
-		msg.Thumb = telegramUploadOsFile{tmpThumbnailFile}
-	}
-	_, err = bot.Send(msg)
+	// Check dimension
+	dimensions, err := reddit.GetVideoDimensions(tmpFile.Name())
 	if err != nil {
-		bot.Send(tgbotapi.NewMessage(chatID, "Cannot upload file.\nHere is the link to file: "+gifUrl))
-		log.Println("Cannot upload file:", err)
-		return
+		log.Println("Cannot get dimensions:", err)
 	}
+	log.Println(dimensions)
+	// Upload it
+	animationOpt := &gotgbot.SendAnimationOpts{
+		Caption:   addLinkIfNeeded(escapeMarkdown(title), postUrl),
+		ParseMode: gotgbot.ParseModeMarkdownV2,
+		Width:     dimensions.Width,
+		Height:    dimensions.Height,
+	}
+	if tmpThumbnailFile != nil {
+		animationOpt.Thumbnail = fileReaderFromOsFile(tmpThumbnailFile)
+	}
+	_, err = bot.SendAnimation(chatID, fileReaderFromOsFile(tmpFile), animationOpt)
+	if err != nil {
+		log.Println("Unable to upload:", err)
+		_, err = bot.SendMessage(chatID, "I couldn’t upload this GIF.\nHere is the link: "+gifUrl, nil)
+	}
+	return err
 }
 
 // handleVideoUpload downloads a video and then uploads it to Telegram
-func handleVideoUpload(vidUrl, audioUrl, title, thumbnailUrl, postUrl string, duration int, chatID int64) {
+func (c *Client) handleVideoUpload(bot *gotgbot.Bot, vidUrl, audioUrl, title, thumbnailUrl, postUrl string, duration, chatID int64) error {
 	// Inform the user we are doing some shit
-	stopReportChannel := statusReporter(chatID, "upload_video")
+	stopReportChannel := statusReporter(bot, chatID, "upload_video")
 	defer close(stopReportChannel)
 	// Download the gif
-	tmpFile, err := reddit.DownloadVideo(vidUrl, audioUrl)
+	tmpFile, err := c.RedditOauth.DownloadVideo(vidUrl, audioUrl)
 	if err != nil {
 		if errors.Is(err, reddit.FileTooBigError) {
-			bot.Send(tgbotapi.NewMessage(chatID, "Can't download file due to big size.\n"+generateVideoUrlsMessage(vidUrl, audioUrl)))
+			_, err = bot.SendMessage(chatID, "I couldn’t download this file because it’s too large.\n"+generateVideoUrlsMessage(vidUrl, audioUrl), nil)
 		} else {
-			log.Println("Cannot download file", vidUrl, ":", err)
-			bot.Send(tgbotapi.NewMessage(chatID, "Can't download file.\n"+generateVideoUrlsMessage(vidUrl, audioUrl)))
+			log.Println("Unable to download", vidUrl, ":", err)
+			_, err = bot.SendMessage(chatID, "I couldn’t download this video.\n"+generateVideoUrlsMessage(vidUrl, audioUrl), nil)
 		}
-		return
+		return err
 	}
 	defer func() { // Cleanup
-		tmpFile.Close()
-		os.Remove(tmpFile.Name())
+		_ = tmpFile.Close()
+		_ = os.Remove(tmpFile.Name())
 	}()
 	// Check file size
 	if !util.CheckFileSize(tmpFile.Name(), RegularMaxUploadSize) {
-		bot.Send(tgbotapi.NewMessage(chatID, "This file is too big to upload it on telegram!\n"+generateVideoUrlsMessage(vidUrl, audioUrl)))
-		return
+		_, err = bot.SendMessage(chatID, "This file is too large to upload on Telegram.\n"+generateVideoUrlsMessage(vidUrl, audioUrl), nil)
+		return err
 	}
 	// Check thumbnail
 	var tmpThumbnailFile *os.File = nil
 	if !util.CheckFileSize(tmpFile.Name(), NoThumbnailNeededSize) && thumbnailUrl != "" {
-		tmpThumbnailFile, err = reddit.DownloadThumbnail(thumbnailUrl)
-		if err == nil {
+		tmpThumbnailFile, err = c.RedditOauth.DownloadThumbnail(thumbnailUrl)
+		if err != nil {
+			log.Println("Cannot download thumbnail", thumbnailUrl, ":", err)
+		} else {
 			defer func() {
-				tmpThumbnailFile.Close()
-				os.Remove(tmpThumbnailFile.Name())
+				_ = tmpThumbnailFile.Close()
+				_ = os.Remove(tmpThumbnailFile.Name())
 			}()
 		}
 	}
-	// Upload it
-	msg := tgbotapi.NewVideo(chatID, telegramUploadOsFile{tmpFile})
-	msg.Caption = addLinkIfNeeded(escapeMarkdown(title), postUrl)
-	msg.Duration = duration
-	msg.SupportsStreaming = true
-	msg.ParseMode = MarkdownV2
-	if tmpThumbnailFile != nil {
-		msg.Thumb = telegramUploadOsFile{tmpThumbnailFile}
-	}
-	_, err = bot.Send(msg)
+	// Check dimension
+	dimensions, err := reddit.GetVideoDimensions(tmpFile.Name())
 	if err != nil {
-		log.Println("Cannot upload file:", err)
-		bot.Send(tgbotapi.NewMessage(chatID, "Cannot upload file.\n"+generateVideoUrlsMessage(vidUrl, audioUrl)))
-		return
+		log.Println("Cannot get dimensions:", err)
 	}
+	// Upload it
+	videoOpt := &gotgbot.SendVideoOpts{
+		Duration:          duration,
+		Caption:           addLinkIfNeeded(escapeMarkdown(title), postUrl),
+		ParseMode:         gotgbot.ParseModeMarkdownV2,
+		SupportsStreaming: true,
+		Width:             dimensions.Width,
+		Height:            dimensions.Height,
+	}
+	if tmpThumbnailFile != nil {
+		videoOpt.Thumbnail = fileReaderFromOsFile(tmpThumbnailFile)
+	}
+	_, err = bot.SendVideo(chatID, fileReaderFromOsFile(tmpFile), videoOpt)
+	if err != nil {
+		log.Println("Unable to upload:", err)
+		_, err = bot.SendMessage(chatID, "I couldn’t upload this video.\n"+generateVideoUrlsMessage(vidUrl, audioUrl), nil)
+	}
+	return err
 }
 
 // handleVideoUpload downloads a photo and then uploads it to Telegram
-func handlePhotoUpload(photoUrl, title, thumbnailUrl, postUrl string, chatID int64, asPhoto bool) {
+func (c *Client) handlePhotoUpload(bot *gotgbot.Bot, photoUrl, title, thumbnailUrl, postUrl string, chatID int64, asPhoto bool) error {
 	// Inform the user we are doing some shit
 	var stopReportChannel chan struct{}
 	if asPhoto {
-		stopReportChannel = statusReporter(chatID, "upload_photo")
+		stopReportChannel = statusReporter(bot, chatID, "upload_photo")
 	} else {
-		stopReportChannel = statusReporter(chatID, "upload_document")
+		stopReportChannel = statusReporter(bot, chatID, "upload_document")
 	}
 	defer close(stopReportChannel)
 	// Download the gif
-	tmpFile, err := reddit.DownloadPhoto(photoUrl)
+	tmpFile, err := c.RedditOauth.DownloadPhoto(photoUrl)
 	if err != nil {
-		log.Println("Cannot download file", photoUrl, ":", err)
-		bot.Send(tgbotapi.NewMessage(chatID, "Cannot download file.\nHere is the link to file: "+photoUrl))
-		return
+		log.Println("Unable to download", photoUrl, ":", err)
+		_, err = bot.SendMessage(chatID, "I couldn’t download this image.\nHere is the link: "+photoUrl, nil)
+		return err
 	}
 	defer func() { // Cleanup
-		tmpFile.Close()
-		os.Remove(tmpFile.Name())
+		_ = tmpFile.Close()
+		_ = os.Remove(tmpFile.Name())
 	}()
 	// Check filesize
 	if asPhoto {
 		asPhoto = util.CheckFileSize(tmpFile.Name(), PhotoMaxUploadSize) // send photo as file if it is larger than 10MB
 	}
 	if !util.CheckFileSize(tmpFile.Name(), RegularMaxUploadSize) {
-		bot.Send(tgbotapi.NewMessage(chatID, "This file is too big to upload it on telegram!\nHere is the link to image: "+photoUrl))
-		return
+		_, err = bot.SendMessage(chatID, "The file is too large to upload on Telegram.\nHere is the link: "+photoUrl, nil)
+		return err
 	}
 	// Download thumbnail
 	var tmpThumbnailFile *os.File = nil
-	if !util.CheckFileSize(tmpFile.Name(), NoThumbnailNeededSize) && thumbnailUrl != "" {
-		tmpThumbnailFile, err = reddit.DownloadThumbnail(thumbnailUrl)
-		if err == nil {
+	if !asPhoto && !util.CheckFileSize(tmpFile.Name(), NoThumbnailNeededSize) && thumbnailUrl != "" {
+		// photos does not support thumbnail...
+		tmpThumbnailFile, err = c.RedditOauth.DownloadThumbnail(thumbnailUrl)
+		if err != nil {
+			log.Println("Cannot download thumbnail", thumbnailUrl, ":", err)
+		} else {
 			defer func() {
-				tmpThumbnailFile.Close()
-				os.Remove(tmpThumbnailFile.Name())
+				_ = tmpThumbnailFile.Close()
+				_ = os.Remove(tmpThumbnailFile.Name())
 			}()
 		}
 	}
 	// Upload
-	var msg tgbotapi.Chattable
 	if asPhoto {
-		photo := tgbotapi.NewPhoto(chatID, telegramUploadOsFile{tmpFile})
-		photo.Caption = addLinkIfNeeded(escapeMarkdown(title), postUrl)
-		photo.ParseMode = MarkdownV2
-		if tmpThumbnailFile != nil {
-			photo.Thumb = telegramUploadOsFile{tmpThumbnailFile}
-		}
-		msg = photo
+		_, err = bot.SendPhoto(chatID, fileReaderFromOsFile(tmpFile), &gotgbot.SendPhotoOpts{
+			Caption:   addLinkIfNeeded(escapeMarkdown(title), postUrl),
+			ParseMode: gotgbot.ParseModeMarkdownV2,
+		})
 	} else {
-		photo := tgbotapi.NewDocument(chatID, telegramUploadOsFile{tmpFile})
-		photo.Caption = addLinkIfNeeded(escapeMarkdown(title), postUrl)
-		photo.ParseMode = MarkdownV2
-		if tmpThumbnailFile != nil {
-			photo.Thumb = telegramUploadOsFile{tmpThumbnailFile}
+		documentOpt := &gotgbot.SendDocumentOpts{
+			Caption:   addLinkIfNeeded(escapeMarkdown(title), postUrl),
+			ParseMode: gotgbot.ParseModeMarkdownV2,
 		}
-		msg = photo
+		if tmpThumbnailFile != nil {
+			documentOpt.Thumbnail = fileReaderFromOsFile(tmpThumbnailFile)
+		}
+		_, err = bot.SendDocument(chatID, fileReaderFromOsFile(tmpFile), documentOpt)
 	}
-	_, err = bot.Send(msg)
 	if err != nil {
-		bot.Send(tgbotapi.NewMessage(chatID, "Cannot upload file.\nHere is the link to image: "+photoUrl))
-		log.Println("Cannot upload file:", err)
-		return
+		log.Println("Unable to upload:", err)
+		_, err = bot.SendMessage(chatID, "I couldn’t upload this image.\nHere is the link: "+photoUrl, nil)
 	}
+	return err
 }
 
 // handleAlbumUpload uploads an album to Telegram
-func handleAlbumUpload(album reddit.FetchResultAlbum, chatID int64, asFile bool) {
+func (c *Client) handleAlbumUpload(bot *gotgbot.Bot, album reddit.FetchResultAlbum, chatID int64, asFile bool) error {
 	// Report status
-	stopReportChannel := statusReporter(chatID, "upload_photo")
+	stopReportChannel := statusReporter(bot, chatID, "upload_photo")
 	defer close(stopReportChannel)
 	// Download each file of album
 	var err error
 	filePaths := make([]*os.File, 0, len(album.Album))
 	defer func() { // cleanup
 		for _, f := range filePaths {
-			f.Close()
-			os.Remove(f.Name())
+			_ = f.Close()
+			_ = os.Remove(f.Name())
 		}
 	}()
-	fileConfigs := make([]interface{}, 0, len(album.Album))
+	fileConfigs := make([]gotgbot.InputMedia, 0, len(album.Album))
 	fileLinks := make([]string, 0, len(album.Album))
 	for _, media := range album.Album {
 		var tmpFile *os.File
 		var link string
-		var f interface{}
+		var f gotgbot.InputMedia
 		switch media.Type {
 		case reddit.FetchResultMediaTypePhoto:
-			tmpFile, err = reddit.DownloadPhoto(media.Link)
+			tmpFile, err = c.RedditOauth.DownloadPhoto(media.Link)
 			if err == nil {
 				if asFile {
-					uploadFile := tgbotapi.NewInputMediaDocument(telegramUploadOsFile{tmpFile})
-					uploadFile.Caption = media.Caption
-					f = uploadFile
+					f = gotgbot.InputMediaDocument{Media: fileReaderFromOsFile(tmpFile), Caption: media.Caption}
 				} else {
-					uploadFile := tgbotapi.NewInputMediaPhoto(telegramUploadOsFile{tmpFile})
-					uploadFile.Caption = media.Caption
-					f = uploadFile
+					f = gotgbot.InputMediaPhoto{Media: fileReaderFromOsFile(tmpFile), Caption: media.Caption}
 				}
 			}
 		case reddit.FetchResultMediaTypeGif:
-			tmpFile, err = reddit.DownloadGif(media.Link)
+			tmpFile, err = c.RedditOauth.DownloadGif(media.Link)
 			if err == nil {
 				if asFile {
-					uploadFile := tgbotapi.NewInputMediaDocument(telegramUploadOsFile{tmpFile})
-					uploadFile.Caption = media.Caption
-					f = uploadFile
+					f = gotgbot.InputMediaDocument{Media: fileReaderFromOsFile(tmpFile), Caption: media.Caption}
 				} else {
-					uploadFile := tgbotapi.NewInputMediaVideo(telegramUploadOsFile{tmpFile})
-					uploadFile.Caption = media.Caption
-					f = uploadFile
+					f = gotgbot.InputMediaVideo{Media: fileReaderFromOsFile(tmpFile), Caption: media.Caption}
 				}
 			}
 		case reddit.FetchResultMediaTypeVideo:
-			tmpFile, err = reddit.DownloadVideo(media.Link, "") // TODO: can i do something about audio URL?
+			tmpFile, err = c.RedditOauth.DownloadVideo(media.Link, "") // TODO: can i do something about audio URL?
 			if err == nil {
 				if asFile {
-					uploadFile := tgbotapi.NewInputMediaDocument(telegramUploadOsFile{tmpFile})
-					uploadFile.Caption = media.Caption
-					f = uploadFile
+					f = gotgbot.InputMediaDocument{Media: fileReaderFromOsFile(tmpFile), Caption: media.Caption}
 				} else {
-					uploadFile := tgbotapi.NewInputMediaVideo(telegramUploadOsFile{tmpFile})
-					uploadFile.Caption = media.Caption
-					uploadFile.SupportsStreaming = true
-					f = uploadFile
+					f = gotgbot.InputMediaVideo{
+						Media:             fileReaderFromOsFile(tmpFile),
+						Caption:           media.Caption,
+						SupportsStreaming: true,
+					}
 				}
 			}
 		}
 		if err != nil {
-			log.Println("cannot download media of gallery:", err)
-			bot.Send(tgbotapi.NewMessage(chatID, "Cannot download gallery media; The link was: "+link))
+			log.Println("Unable to download:", err)
+			_, _ = bot.SendMessage(chatID, "I couldn’t download the gallery./nHere is the link: "+link, nil)
 			continue
 		}
 		fileConfigs = append(fileConfigs, f)
@@ -255,77 +264,83 @@ func handleAlbumUpload(album reddit.FetchResultAlbum, chatID int64, asFile bool)
 	// Now upload 10 of them at once
 	i := 0
 	for ; i < len(fileConfigs)/10; i++ {
-		_, err = bot.SendMediaGroup(tgbotapi.NewMediaGroup(chatID, fileConfigs[i*10:(i+1)*10]))
+		_, err = bot.SendMediaGroup(chatID, fileConfigs[i*10:(i+1)*10], nil)
 		if err != nil {
-			log.Println("Cannot upload gallery:", err)
-			bot.Send(tgbotapi.NewMessage(chatID, generateGalleryFailedMessage(fileLinks[i*10:(i+1)*10])))
+			log.Println("Unable to upload:", err)
+			_, _ = bot.SendMessage(chatID, generateGalleryFailedMessage(fileLinks[i*10:(i+1)*10]), nil)
 		}
 	}
 	err = nil // needed for last error check
 	fileConfigs = fileConfigs[i*10:]
 	if len(fileConfigs) == 1 {
 		switch f := fileConfigs[0].(type) {
-		case tgbotapi.InputMediaPhoto:
-			_, err = bot.Send(tgbotapi.NewPhoto(chatID, f.Media))
-		case tgbotapi.InputMediaVideo:
-			_, err = bot.Send(tgbotapi.NewVideo(chatID, f.Media))
-		case tgbotapi.InputMediaDocument:
-			_, err = bot.Send(tgbotapi.NewDocument(chatID, f.Media))
+		case gotgbot.InputMediaPhoto:
+			_, err = bot.SendPhoto(chatID, f.Media, nil)
+		case gotgbot.InputMediaVideo:
+			_, err = bot.SendVideo(chatID, f.Media, nil)
+		case gotgbot.InputMediaDocument:
+			_, err = bot.SendDocument(chatID, f.Media, nil)
+		default:
+			panic("IMPOSSIBLE")
 		}
 	} else if len(fileConfigs) > 1 {
-		_, err = bot.SendMediaGroup(tgbotapi.NewMediaGroup(chatID, fileConfigs))
+		_, err = bot.SendMediaGroup(chatID, fileConfigs, nil)
 	}
 	if err != nil {
-		log.Println("cannot upload gallery:", err)
-		bot.Send(tgbotapi.NewMessage(chatID, generateGalleryFailedMessage(fileLinks[i*10:])))
+		log.Println("Unable to upload:", err)
+		_, err = bot.SendMessage(chatID, generateGalleryFailedMessage(fileLinks[i*10:]), nil)
 	}
+	return err
 }
 
 // handleAudioUpload simply downloads then uploads an audio to Telegram
-func handleAudioUpload(audioURL, title, postUrl string, duration int, chatID int64) {
+func (c *Client) handleAudioUpload(bot *gotgbot.Bot, audioURL, title, postUrl string, duration, chatID int64) error {
 	// Send status
-	stopReportChannel := statusReporter(chatID, "upload_voice")
+	stopReportChannel := statusReporter(bot, chatID, "upload_voice")
 	defer close(stopReportChannel)
 	// Create a temp file
-	audioFile, err := reddit.DownloadAudio(audioURL)
+	audioFile, err := c.RedditOauth.DownloadAudio(audioURL)
 	if err != nil {
-		bot.Send(tgbotapi.NewMessage(chatID, "Cannot download audio; "+generateAudioURLMessage(audioURL)))
-		return
+		log.Println("Unable to download:", err)
+		_, err = bot.SendMessage(chatID, "I couldn’t download the audio.\n"+generateAudioURLMessage(audioURL), nil)
+		return err
 	}
 	defer func() {
-		audioFile.Close()
-		os.Remove(audioFile.Name())
+		_ = audioFile.Close()
+		_ = os.Remove(audioFile.Name())
 	}()
 	// Simply upload it to telegram
-	msg := tgbotapi.NewAudio(chatID, telegramUploadOsFile{audioFile})
-	msg.Caption = addLinkIfNeeded(escapeMarkdown(title), postUrl)
-	msg.ParseMode = MarkdownV2
-	msg.Duration = duration
-	_, err = bot.Send(msg)
+	_, err = bot.SendAudio(chatID, fileReaderFromOsFile(audioFile), &gotgbot.SendAudioOpts{
+		Caption:   addLinkIfNeeded(escapeMarkdown(title), postUrl),
+		ParseMode: gotgbot.ParseModeMarkdownV2,
+		Duration:  duration,
+	})
 	if err != nil {
-		bot.Send(tgbotapi.NewMessage(chatID, "Cannot upload audio; "+generateAudioURLMessage(audioURL)))
-		return
+		log.Println("Unable to upload:", err)
+		_, err = bot.SendMessage(chatID, "I couldn’t upload the audio.\n"+generateAudioURLMessage(audioURL), nil)
 	}
+	return err
 }
 
 // statusReporter starts reporting for uploading a thing in telegram
 // This function returns a channel which a message must be sent to it when reporting must be stopped
-// You can also close the channel to stop the reporter
-func statusReporter(chatID int64, action string) chan struct{} {
+// You can also close the channel to stop the reporter.
+//
+// TODO: later after the next release of the bot, use ChatAction... types
+func statusReporter(bot *gotgbot.Bot, chatID int64, action string) chan struct{} {
 	doneChan := make(chan struct{}, 1)
-	go statusReporterGoroutine(chatID, action, doneChan)
+	go statusReporterGoroutine(bot, chatID, action, doneChan)
 	return doneChan
 }
 
 // statusReporterGoroutine must be called from another goroutine to report the status of upload
-func statusReporterGoroutine(chatID int64, action string, done <-chan struct{}) {
+func statusReporterGoroutine(bot *gotgbot.Bot, chatID int64, action string, done <-chan struct{}) {
 	ticker := time.NewTicker(time.Second * 5) // we have to send it each 5 seconds
-	actionObject := tgbotapi.NewChatAction(chatID, action)
-	bot.Send(actionObject)
+	_, _ = bot.SendChatAction(chatID, action, nil)
 	for {
 		select {
 		case <-ticker.C:
-			bot.Send(actionObject)
+			_, _ = bot.SendChatAction(chatID, action, nil)
 		case <-done:
 			ticker.Stop()
 			return
@@ -338,7 +353,7 @@ func statusReporterGoroutine(chatID int64, action string, done <-chan struct{}) 
 func generateVideoUrlsMessage(videoUrl, audioUrl string) string {
 	var sb strings.Builder
 	sb.Grow(150)
-	sb.WriteString("Here is the link to video file: ")
+	sb.WriteString("Here is the link to the video file: ")
 	sb.WriteString(videoUrl)
 	if audioUrl != "" {
 		sb.WriteString("\n")
@@ -349,7 +364,7 @@ func generateVideoUrlsMessage(videoUrl, audioUrl string) string {
 
 // generateAudioURLMessage generates a text to send to user when downloading an audio fails
 func generateAudioURLMessage(audioURL string) string {
-	return "Here is the link to audio file: " + audioURL
+	return "Here is the link to the audio file: " + audioURL
 }
 
 // generateGalleryFailedMessage generates an error message to send to user when uploading gallery goes wrong
@@ -357,7 +372,7 @@ func generateAudioURLMessage(audioURL string) string {
 func generateGalleryFailedMessage(medias []string) string {
 	var sb strings.Builder
 	sb.Grow(len(medias) * 120) // each link length I guess
-	sb.WriteString("Cannot upload gallery.\nHere are the links of the files:")
+	sb.WriteString("I couldn’t upload the media.\nHere are the links to the files:")
 	for _, media := range medias {
 		sb.WriteByte('\n')
 		sb.WriteString(media)

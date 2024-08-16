@@ -217,14 +217,7 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 	title := root["title"].(string)
 	title = html.UnescapeString(title)
 	// Check thumbnail; This must be done before checking cross posts
-	thumbnailUrl := ""
-	if t, ok := root["thumbnail"]; ok {
-		thumbnailUrl = html.UnescapeString(t.(string))
-		// Check the url; Sometimes, the value of this is default
-		if !util.IsUrl(thumbnailUrl) {
-			thumbnailUrl = ""
-		}
-	}
+	thumbnailUrl := extractThumbnail(root)
 	// Check cross post
 	if _, crossPost := root["crosspost_parent_list"]; crossPost {
 		c := root["crosspost_parent_list"].([]interface{})
@@ -610,4 +603,38 @@ func getVideoVRedditBaseURL(vredditURL string) string {
 func extractLinkAndRes(data interface{}) (u string, width string, height string) {
 	kv := data.(map[string]interface{})
 	return html.UnescapeString(kv["url"].(string)), strconv.Itoa(int(kv["width"].(float64))), strconv.Itoa(int(kv["height"].(float64)))
+}
+
+// Extract the thumbnail based on the root of the document.
+// Will return an empty string if the thumbnail could not be found.
+func extractThumbnail(root map[string]interface{}) string {
+	// At first check the thumbnail in the preview section.
+	if preview, ok := root["preview"].(map[string]interface{}); ok {
+		if images, ok := preview["images"].([]interface{}); ok && len(images) > 0 {
+			// I don't know when the len is more than 1. In albums this entry is non-existent
+			if index, ok := images[0].(map[string]interface{}); ok {
+				if source, ok := index["source"].(map[string]interface{}); ok {
+					if u, ok := source["url"]; ok {
+						thumbnailUrl := html.UnescapeString(u.(string))
+						// Check the url; Sometimes, the value of this is default
+						if util.IsUrl(thumbnailUrl) {
+							return thumbnailUrl
+						}
+						// fallback to root thumbnail
+					}
+				}
+			}
+		}
+	}
+	// As a fallback, just get the thumbnail in root which is always 140x140 and cropped
+	if t, ok := root["thumbnail"]; ok {
+		thumbnailUrl := html.UnescapeString(t.(string))
+		// Check the url; Sometimes, the value of this is default or NSFW
+		if !util.IsUrl(thumbnailUrl) {
+			thumbnailUrl = ""
+		}
+		return thumbnailUrl
+	}
+	// Nothing found. Return empty string
+	return ""
 }

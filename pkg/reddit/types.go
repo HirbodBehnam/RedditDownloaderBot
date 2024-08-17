@@ -39,6 +39,9 @@ type FetchResultMediaEntry struct {
 	Link string
 	// The quality of this media
 	Quality string
+	// The dimensions of this media. Will be zeroed if there was
+	// any problem getting the dimension.
+	//Dim Dimension commented out for now...
 }
 
 // FetchResultMediaEntries is a list of FetchResultMediaEntry
@@ -51,6 +54,32 @@ func (e FetchResultMediaEntries) ToLinkMap() map[int]string {
 		result[i] = media.Link
 	}
 	return result
+}
+
+// FetchedThumbnail shows one of the fetched thumbnails and it's size
+type FetchedThumbnail struct {
+	// The link to the thumbnail
+	Link string
+	// The dimensions of this thumbnail. Will be zeroed if there was
+	// any problem getting the dimension.
+	Dim Dimension
+}
+
+// FetchedThumbnails is an array of FetchedThumbnail.
+// This value must be sorted by quality. Increasing.
+type FetchedThumbnails []FetchedThumbnail
+
+// SelectThumbnail select thumbnail based on max and min dimensions
+func (t FetchedThumbnails) SelectThumbnail(maxDim Dimension) string {
+	if len(t) == 0 { // no thumbnails
+		return ""
+	}
+	for i := len(t) - 1; i >= 0; i-- {
+		if t[i].Dim.Width <= maxDim.Width && t[i].Dim.Height <= maxDim.Height {
+			return t[i].Link
+		}
+	}
+	return t[0].Link // return the lowest res thumbnail
 }
 
 // FetchResultMediaType says either is media is photo, gif or video
@@ -66,9 +95,9 @@ const (
 type FetchResultMedia struct {
 	// Medias is the list of all available media in different qualities
 	Medias FetchResultMediaEntries
-	// This is the link to the thumbnail of this media
-	// Might be empty
-	ThumbnailLink string
+	// List of links to thumbnails plus their dimensions.
+	// Might be empty.
+	ThumbnailLinks FetchedThumbnails
 	// Title is the title of the post
 	Title string
 	// Duration of the video. This entry does not matter on other types

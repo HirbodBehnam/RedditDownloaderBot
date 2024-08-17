@@ -468,9 +468,45 @@ func TestGetPost(t *testing.T) {
 						Quality: "108×133",
 					},
 				},
-				ThumbnailLink: "https://preview.redd.it/kk1x0xw81ij91.jpg?auto=webp&s=1692ba46047ae5e4e2f315bde8a00f7e4a8c5759",
-				Title:         "The truth has been spoken",
-				Type:          FetchResultMediaTypePhoto,
+				ThumbnailLinks: FetchedThumbnails{
+					{
+						Link: "https://preview.redd.it/kk1x0xw81ij91.jpg?width=108&crop=smart&auto=webp&s=d221522a953550ca2059ba069e8acd32c20fc7dc",
+						Dim: Dimension{
+							Width:  108,
+							Height: 133,
+						},
+					},
+					{
+						Link: "https://preview.redd.it/kk1x0xw81ij91.jpg?width=216&crop=smart&auto=webp&s=3caf98415dacb066ed3b3f30794e2df28078e8c7",
+						Dim: Dimension{
+							Width:  216,
+							Height: 267,
+						},
+					},
+					{
+						Link: "https://preview.redd.it/kk1x0xw81ij91.jpg?width=320&crop=smart&auto=webp&s=37245e7eab0a70474f0f797b5def47b527661b65",
+						Dim: Dimension{
+							Width:  320,
+							Height: 396,
+						},
+					},
+					{
+						Link: "https://preview.redd.it/kk1x0xw81ij91.jpg?width=640&crop=smart&auto=webp&s=36a64baba57f781bfb25e140ae91fca6a72ff63a",
+						Dim: Dimension{
+							Width:  640,
+							Height: 792,
+						},
+					},
+					{
+						Link: "https://preview.redd.it/kk1x0xw81ij91.jpg?auto=webp&s=1692ba46047ae5e4e2f315bde8a00f7e4a8c5759",
+						Dim: Dimension{
+							Width:  750,
+							Height: 929,
+						},
+					},
+				},
+				Title: "The truth has been spoken",
+				Type:  FetchResultMediaTypePhoto,
 			},
 			ExpectedError: nil,
 		},
@@ -513,9 +549,59 @@ func TestGetPost(t *testing.T) {
 						Quality: "108×78",
 					},
 				},
-				ThumbnailLink: "https://external-preview.redd.it/gJthFa1BIb3_ku0tYIgyrQr22I4oDKIl7QlUa-CzJak.jpg?auto=webp&s=94e9b63ae66d85297049171604a9f7e8ec872326",
-				Title:         "you what now?",
-				Type:          FetchResultMediaTypePhoto,
+				ThumbnailLinks: FetchedThumbnails{
+					{
+						Link: "https://external-preview.redd.it/gJthFa1BIb3_ku0tYIgyrQr22I4oDKIl7QlUa-CzJak.jpg?width=108&crop=smart&auto=webp&s=549de4c6a376f37ca5e5b09bb91caa13f6340246",
+						Dim: Dimension{
+							Width:  108,
+							Height: 78,
+						},
+					},
+					{
+						Link: "https://external-preview.redd.it/gJthFa1BIb3_ku0tYIgyrQr22I4oDKIl7QlUa-CzJak.jpg?width=216&crop=smart&auto=webp&s=6dd4625922fd88f8916ffa0f9db75802390c0fa8",
+						Dim: Dimension{
+							Width:  216,
+							Height: 156,
+						},
+					},
+					{
+						Link: "https://external-preview.redd.it/gJthFa1BIb3_ku0tYIgyrQr22I4oDKIl7QlUa-CzJak.jpg?width=320&crop=smart&auto=webp&s=29a4e06679c433c68b53486a0c99a00dd3bf5ab7",
+						Dim: Dimension{
+							Width:  320,
+							Height: 232,
+						},
+					},
+					{
+						Link: "https://external-preview.redd.it/gJthFa1BIb3_ku0tYIgyrQr22I4oDKIl7QlUa-CzJak.jpg?width=640&crop=smart&auto=webp&s=cec0e9e13e9ee60a83154b1c8ef506dc3232354a",
+						Dim: Dimension{
+							Width:  640,
+							Height: 464,
+						},
+					},
+					{
+						Link: "https://external-preview.redd.it/gJthFa1BIb3_ku0tYIgyrQr22I4oDKIl7QlUa-CzJak.jpg?width=960&crop=smart&auto=webp&s=89d0687a852e5a539e77595da9ae972ee3a6f17a",
+						Dim: Dimension{
+							Width:  960,
+							Height: 696,
+						},
+					},
+					{
+						Link: "https://external-preview.redd.it/gJthFa1BIb3_ku0tYIgyrQr22I4oDKIl7QlUa-CzJak.jpg?width=1080&crop=smart&auto=webp&s=32fa1cc26cd06eb1dcbf75adc01547ed77c5b59f",
+						Dim: Dimension{
+							Width:  1080,
+							Height: 783,
+						},
+					},
+					{
+						Link: "https://external-preview.redd.it/gJthFa1BIb3_ku0tYIgyrQr22I4oDKIl7QlUa-CzJak.jpg?auto=webp&s=94e9b63ae66d85297049171604a9f7e8ec872326",
+						Dim: Dimension{
+							Width:  2787,
+							Height: 2022,
+						},
+					},
+				},
+				Title: "you what now?",
+				Type:  FetchResultMediaTypePhoto,
 			},
 		},
 		{
@@ -527,9 +613,45 @@ func TestGetPost(t *testing.T) {
 					Link:    "https://i.imgur.com/download/QdBe1Vw.gif",
 					Quality: "Imgur",
 				}},
-				ThumbnailLink: "https://external-preview.redd.it/BFq8Eg5rbtrOYxMrF63cP3t30AwAnWgXch-OpLAvO4E.jpg?auto=webp&s=9dcb8c2318b68ebb97867ee161d8428bee871b65",
-				Title:         "You daughter of a bitch, I'm in.",
-				Type:          FetchResultMediaTypeGif,
+				ThumbnailLinks: FetchedThumbnails{
+					{
+						Link: "https://external-preview.redd.it/BFq8Eg5rbtrOYxMrF63cP3t30AwAnWgXch-OpLAvO4E.jpg?width=108&crop=smart&auto=webp&s=de260faefaf40d443495605a8c26ade63db488cf",
+						Dim: Dimension{
+							Width:  108,
+							Height: 134,
+						},
+					},
+					{
+						Link: "https://external-preview.redd.it/BFq8Eg5rbtrOYxMrF63cP3t30AwAnWgXch-OpLAvO4E.jpg?width=216&crop=smart&auto=webp&s=07548bd941fe6d33790be90c5785f5c60a758447",
+						Dim: Dimension{
+							Width:  216,
+							Height: 268,
+						},
+					},
+					{
+						Link: "https://external-preview.redd.it/BFq8Eg5rbtrOYxMrF63cP3t30AwAnWgXch-OpLAvO4E.jpg?width=320&crop=smart&auto=webp&s=27f6532299427eb2f18d2a3dd78a600c8b8128d8",
+						Dim: Dimension{
+							Width:  320,
+							Height: 398,
+						},
+					},
+					{
+						Link: "https://external-preview.redd.it/BFq8Eg5rbtrOYxMrF63cP3t30AwAnWgXch-OpLAvO4E.jpg?width=640&crop=smart&auto=webp&s=fcfe2343362ea55e8d808b37cf76ea99f8374517",
+						Dim: Dimension{
+							Width:  640,
+							Height: 796,
+						},
+					},
+					{
+						Link: "https://external-preview.redd.it/BFq8Eg5rbtrOYxMrF63cP3t30AwAnWgXch-OpLAvO4E.jpg?auto=webp&s=9dcb8c2318b68ebb97867ee161d8428bee871b65",
+						Dim: Dimension{
+							Width:  686,
+							Height: 854,
+						},
+					},
+				},
+				Title: "You daughter of a bitch, I'm in.",
+				Type:  FetchResultMediaTypeGif,
 			},
 			ExpectedError: nil,
 		},
@@ -556,9 +678,38 @@ func TestGetPost(t *testing.T) {
 						Quality: "108×108",
 					},
 				},
-				ThumbnailLink: "https://preview.redd.it/jp4owaxuwij91.gif?format=png8&s=6e600c08043863f074d48763846ed961f832d401",
-				Title:         "I gotta do this more often",
-				Type:          FetchResultMediaTypeGif,
+				ThumbnailLinks: FetchedThumbnails{
+					{
+						Link: "https://preview.redd.it/jp4owaxuwij91.gif?width=108&crop=smart&format=png8&s=abcd150c22696766c3fee111c420a6355c60a9ea",
+						Dim: Dimension{
+							Width:  108,
+							Height: 108,
+						},
+					},
+					{
+						Link: "https://preview.redd.it/jp4owaxuwij91.gif?width=216&crop=smart&format=png8&s=566447ed95a701c1fa681e312647b04020e00415",
+						Dim: Dimension{
+							Width:  216,
+							Height: 216,
+						},
+					},
+					{
+						Link: "https://preview.redd.it/jp4owaxuwij91.gif?width=320&crop=smart&format=png8&s=2c7122140fe310ba474844edc76cec066d0f2ddd",
+						Dim: Dimension{
+							Width:  320,
+							Height: 321,
+						},
+					},
+					{
+						Link: "https://preview.redd.it/jp4owaxuwij91.gif?format=png8&s=6e600c08043863f074d48763846ed961f832d401",
+						Dim: Dimension{
+							Width:  600,
+							Height: 602,
+						},
+					},
+				},
+				Title: "I gotta do this more often",
+				Type:  FetchResultMediaTypeGif,
 			},
 			ExpectedError: nil,
 		},
@@ -603,10 +754,39 @@ func TestGetPost(t *testing.T) {
 						Quality: DownloadAudioQuality,
 					},
 				},
-				ThumbnailLink: "https://external-preview.redd.it/ZSjB6Jgw9bTQiihEUsKu7SWlCMs0Px4HxbgtUsv8BmQ.png?format=pjpg&auto=webp&s=96d2b469bec8267d2ecf3f81fc94e37458afbc7d",
-				Title:         "When you’re showing a low level around",
-				Duration:      5,
-				Type:          FetchResultMediaTypeVideo,
+				ThumbnailLinks: FetchedThumbnails{
+					{
+						Link: "https://external-preview.redd.it/ZSjB6Jgw9bTQiihEUsKu7SWlCMs0Px4HxbgtUsv8BmQ.png?width=108&crop=smart&format=pjpg&auto=webp&s=29ffa06c84be32c10250e01ecf6f719e153fd52f",
+						Dim: Dimension{
+							Width:  108,
+							Height: 121,
+						},
+					},
+					{
+						Link: "https://external-preview.redd.it/ZSjB6Jgw9bTQiihEUsKu7SWlCMs0Px4HxbgtUsv8BmQ.png?width=216&crop=smart&format=pjpg&auto=webp&s=54c41243cf27638af3b963a6e29e075b18c1430d",
+						Dim: Dimension{
+							Width:  216,
+							Height: 243,
+						},
+					},
+					{
+						Link: "https://external-preview.redd.it/ZSjB6Jgw9bTQiihEUsKu7SWlCMs0Px4HxbgtUsv8BmQ.png?width=320&crop=smart&format=pjpg&auto=webp&s=86026d2a1948e66d8630070dad1764069c6ca033",
+						Dim: Dimension{
+							Width:  320,
+							Height: 361,
+						},
+					},
+					{
+						Link: "https://external-preview.redd.it/ZSjB6Jgw9bTQiihEUsKu7SWlCMs0Px4HxbgtUsv8BmQ.png?format=pjpg&auto=webp&s=96d2b469bec8267d2ecf3f81fc94e37458afbc7d",
+						Dim: Dimension{
+							Width:  432,
+							Height: 488,
+						},
+					},
+				},
+				Title:    "When you’re showing a low level around",
+				Duration: 5,
+				Type:     FetchResultMediaTypeVideo,
 			},
 			ExpectedError: nil,
 		},
@@ -637,10 +817,39 @@ func TestGetPost(t *testing.T) {
 						Quality: "220p",
 					},
 				},
-				ThumbnailLink: "https://external-preview.redd.it/ZSjB6Jgw9bTQiihEUsKu7SWlCMs0Px4HxbgtUsv8BmQ.png?format=pjpg&auto=webp&s=96d2b469bec8267d2ecf3f81fc94e37458afbc7d",
-				Title:         "When you’re showing a low level around",
-				Duration:      5,
-				Type:          FetchResultMediaTypeVideo,
+				ThumbnailLinks: FetchedThumbnails{
+					{
+						Link: "https://external-preview.redd.it/ZSjB6Jgw9bTQiihEUsKu7SWlCMs0Px4HxbgtUsv8BmQ.png?width=108&crop=smart&format=pjpg&auto=webp&s=29ffa06c84be32c10250e01ecf6f719e153fd52f",
+						Dim: Dimension{
+							Width:  108,
+							Height: 121,
+						},
+					},
+					{
+						Link: "https://external-preview.redd.it/ZSjB6Jgw9bTQiihEUsKu7SWlCMs0Px4HxbgtUsv8BmQ.png?width=216&crop=smart&format=pjpg&auto=webp&s=54c41243cf27638af3b963a6e29e075b18c1430d",
+						Dim: Dimension{
+							Width:  216,
+							Height: 243,
+						},
+					},
+					{
+						Link: "https://external-preview.redd.it/ZSjB6Jgw9bTQiihEUsKu7SWlCMs0Px4HxbgtUsv8BmQ.png?width=320&crop=smart&format=pjpg&auto=webp&s=86026d2a1948e66d8630070dad1764069c6ca033",
+						Dim: Dimension{
+							Width:  320,
+							Height: 361,
+						},
+					},
+					{
+						Link: "https://external-preview.redd.it/ZSjB6Jgw9bTQiihEUsKu7SWlCMs0Px4HxbgtUsv8BmQ.png?format=pjpg&auto=webp&s=96d2b469bec8267d2ecf3f81fc94e37458afbc7d",
+						Dim: Dimension{
+							Width:  432,
+							Height: 488,
+						},
+					},
+				},
+				Title:    "When you’re showing a low level around",
+				Duration: 5,
+				Type:     FetchResultMediaTypeVideo,
 			},
 			ExpectedError: nil,
 		},
@@ -675,10 +884,46 @@ func TestGetPost(t *testing.T) {
 						Quality: DownloadAudioQuality,
 					},
 				},
-				ThumbnailLink: "https://external-preview.redd.it/HYaqyiXxp62rh7JDeHdV7IEPkn_lP_ZQgor5dB3O89Q.png?format=pjpg&auto=webp&s=f661d191ab000596eeef60c76bbd2a52909b68ae",
-				Title:         "xQc moment",
-				Duration:      11,
-				Type:          FetchResultMediaTypeVideo,
+				ThumbnailLinks: FetchedThumbnails{
+					{
+						Link: "https://external-preview.redd.it/HYaqyiXxp62rh7JDeHdV7IEPkn_lP_ZQgor5dB3O89Q.png?width=108&crop=smart&format=pjpg&auto=webp&s=bb7de76e5e352a5eaa47940152946b943c562ddd",
+						Dim: Dimension{
+							Width:  108,
+							Height: 89,
+						},
+					},
+					{
+						Link: "https://external-preview.redd.it/HYaqyiXxp62rh7JDeHdV7IEPkn_lP_ZQgor5dB3O89Q.png?width=216&crop=smart&format=pjpg&auto=webp&s=10150948869b0d3fe117dbbd23cacf6639794a42",
+						Dim: Dimension{
+							Width:  216,
+							Height: 178,
+						},
+					},
+					{
+						Link: "https://external-preview.redd.it/HYaqyiXxp62rh7JDeHdV7IEPkn_lP_ZQgor5dB3O89Q.png?width=320&crop=smart&format=pjpg&auto=webp&s=ec20341e2373c95f962923fd8161d4dbb723548f",
+						Dim: Dimension{
+							Width:  320,
+							Height: 264,
+						},
+					},
+					{
+						Link: "https://external-preview.redd.it/HYaqyiXxp62rh7JDeHdV7IEPkn_lP_ZQgor5dB3O89Q.png?width=640&crop=smart&format=pjpg&auto=webp&s=4049f16d11352f59bcd64e67309d301ee8f7a6f5",
+						Dim: Dimension{
+							Width:  640,
+							Height: 528,
+						},
+					},
+					{
+						Link: "https://external-preview.redd.it/HYaqyiXxp62rh7JDeHdV7IEPkn_lP_ZQgor5dB3O89Q.png?format=pjpg&auto=webp&s=f661d191ab000596eeef60c76bbd2a52909b68ae",
+						Dim: Dimension{
+							Width:  640,
+							Height: 528,
+						},
+					},
+				},
+				Title:    "xQc moment",
+				Duration: 11,
+				Type:     FetchResultMediaTypeVideo,
 			},
 			ExpectedError: nil,
 		},
@@ -727,10 +972,113 @@ func TestGetPost(t *testing.T) {
 						Quality: "Audio",
 					},
 				},
-				ThumbnailLink: "https://external-preview.redd.it/eHhsa3JrdDl4YmlkMYG42k61zUHLZWYmXgKxVFtbkqT2ytev2qoJoAjMPjdm.png?format=pjpg&auto=webp&s=892d3a60ccd4d1a602637f0ffb974645fe1cea09",
-				Title:         "me_irl",
-				Duration:      23,
-				Type:          FetchResultMediaTypeVideo,
+				ThumbnailLinks: FetchedThumbnails{
+					{
+						Link: "https://external-preview.redd.it/eHhsa3JrdDl4YmlkMYG42k61zUHLZWYmXgKxVFtbkqT2ytev2qoJoAjMPjdm.png?width=108&crop=smart&format=pjpg&auto=webp&s=22ac39cc4f2bdd67116162c394bebc2874d4fe12",
+						Dim: Dimension{
+							Width:  108,
+							Height: 154,
+						},
+					},
+					{
+						Link: "https://external-preview.redd.it/eHhsa3JrdDl4YmlkMYG42k61zUHLZWYmXgKxVFtbkqT2ytev2qoJoAjMPjdm.png?width=216&crop=smart&format=pjpg&auto=webp&s=2a9950deba37336669de14f1a7de42427afd560d",
+						Dim: Dimension{
+							Width:  216,
+							Height: 309,
+						},
+					},
+					{
+						Link: "https://external-preview.redd.it/eHhsa3JrdDl4YmlkMYG42k61zUHLZWYmXgKxVFtbkqT2ytev2qoJoAjMPjdm.png?width=320&crop=smart&format=pjpg&auto=webp&s=d3867b893511c0659c4cd169013e3aead0a424e4",
+						Dim: Dimension{
+							Width:  320,
+							Height: 458,
+						},
+					},
+					{
+						Link: "https://external-preview.redd.it/eHhsa3JrdDl4YmlkMYG42k61zUHLZWYmXgKxVFtbkqT2ytev2qoJoAjMPjdm.png?format=pjpg&auto=webp&s=892d3a60ccd4d1a602637f0ffb974645fe1cea09",
+						Dim: Dimension{
+							Width:  480,
+							Height: 688,
+						},
+					},
+				},
+				Title:    "me_irl",
+				Duration: 23,
+				Type:     FetchResultMediaTypeVideo,
+			},
+			ExpectedError: nil,
+		},
+		{
+			TestName: "Crosspost",
+			PostUrl:  "https://www.reddit.com/r/blender/comments/1etv965/just_had_to_do_it_myself/",
+			Root:     []byte(`{"kind": "Listing", "data": {"after": null, "dist": 1, "modhash": "mggiexr1qbc83913141e49d4b417512a2b4b7f2a35f6fe4abf", "geo_filter": "", "children": [{"kind": "t3", "data": {"approved_at_utc": null, "subreddit": "blender", "selftext": "", "user_reports": [], "saved": false, "mod_reason_title": null, "gilded": 0, "clicked": false, "title": "Just had to do it myself \u2728", "link_flair_richtext": [], "subreddit_name_prefixed": "r/blender", "hidden": false, "pwls": 6, "link_flair_css_class": "", "downs": 0, "thumbnail_height": null, "top_awarded_type": null, "hide_score": false, "name": "t3_1etv965", "quarantine": false, "link_flair_text_color": "light", "upvote_ratio": 0.97, "author_flair_background_color": null, "subreddit_type": "public", "ups": 501, "total_awards_received": 0, "media_embed": {}, "thumbnail_width": null, "author_flair_template_id": null, "is_original_content": false, "author_fullname": "t2_4a0s0y8h", "secure_media": null, "is_reddit_media_domain": true, "is_meta": false, "category": null, "secure_media_embed": {}, "link_flair_text": "I Made This", "can_mod_post": false, "score": 501, "approved_by": null, "is_created_from_ads_ui": false, "author_premium": false, "thumbnail": "default", "edited": false, "author_flair_css_class": null, "author_flair_richtext": [], "gildings": {}, "post_hint": "link", "content_categories": null, "is_self": false, "mod_note": null, "crosspost_parent_list": [{"approved_at_utc": null, "subreddit": "3Dprinting", "selftext": "", "author_fullname": "t2_4a0s0y8h", "saved": false, "mod_reason_title": null, "gilded": 0, "clicked": false, "title": "Just had to do it myself \u2728", "link_flair_richtext": [{"e": "text", "t": "Project"}], "subreddit_name_prefixed": "r/3Dprinting", "hidden": false, "pwls": 6, "link_flair_css_class": "f", "downs": 0, "thumbnail_height": 140, "top_awarded_type": null, "hide_score": false, "name": "t3_1ets3gq", "quarantine": false, "link_flair_text_color": "dark", "upvote_ratio": 0.95, "author_flair_background_color": null, "ups": 2075, "total_awards_received": 0, "media_embed": {}, "thumbnail_width": 140, "author_flair_template_id": null, "is_original_content": false, "user_reports": [], "secure_media": {"reddit_video": {"bitrate_kbps": 2400, "fallback_url": "https://v.redd.it/9i0kvudfq1jd1/DASH_720.mp4?source=fallback", "has_audio": true, "height": 1280, "width": 720, "scrubber_media_url": "https://v.redd.it/9i0kvudfq1jd1/DASH_96.mp4", "dash_url": "https://v.redd.it/9i0kvudfq1jd1/DASHPlaylist.mpd?a=1726488764%2COTU5MmM3MjNjZjBlYWU2N2Q3YWNiZWE0Y2ZmNjViMTM5ZTQxMDBkYzM4N2U4NjhlZjkxZjUxZTdlYjQ0ZmI5Yw%3D%3D&amp;v=1&amp;f=sd", "duration": 67, "hls_url": "https://v.redd.it/9i0kvudfq1jd1/HLSPlaylist.m3u8?a=1726488764%2CYjdhNmIxMjdkYTgzZGM0M2ZlMTE2ZTVkMTQ5YWM4NDlhZTI1OTg4MmFmZWVkNDVkNGM5MGM5M2ZhYmI3ZTk2NA%3D%3D&amp;v=1&amp;f=sd", "is_gif": false, "transcoding_status": "completed"}}, "is_reddit_media_domain": true, "is_meta": false, "category": null, "secure_media_embed": {}, "link_flair_text": "Project", "can_mod_post": false, "score": 2075, "approved_by": null, "is_created_from_ads_ui": false, "author_premium": false, "thumbnail": "https://external-preview.redd.it/ejJqOWJzNmZxMWpkMUs--cDaA9UUgSL4O5vJuFyU0G5jhy4L8UpxQXLGHwak.png?width=140&amp;height=140&amp;crop=140:140,smart&amp;format=jpg&amp;v=enabled&amp;lthumb=true&amp;s=869ec161c43740d62373dbcf93d6043c38f16c5e", "edited": false, "author_flair_css_class": null, "author_flair_richtext": [], "gildings": {}, "post_hint": "hosted:video", "content_categories": null, "is_self": false, "subreddit_type": "public", "created": 1723822902.0, "link_flair_type": "richtext", "wls": 6, "removed_by_category": null, "banned_by": null, "author_flair_type": "text", "domain": "v.redd.it", "allow_live_comments": false, "selftext_html": null, "likes": null, "suggested_sort": null, "banned_at_utc": null, "url_overridden_by_dest": "https://v.redd.it/9i0kvudfq1jd1", "view_count": null, "archived": false, "no_follow": false, "is_crosspostable": true, "pinned": false, "over_18": false, "preview": {"images": [{"source": {"url": "https://external-preview.redd.it/ejJqOWJzNmZxMWpkMUs--cDaA9UUgSL4O5vJuFyU0G5jhy4L8UpxQXLGHwak.png?format=pjpg&amp;auto=webp&amp;s=5f2b1dc92bd59cafab4f6eaff20fa43a77bb96c7", "width": 720, "height": 1280}, "resolutions": [{"url": "https://external-preview.redd.it/ejJqOWJzNmZxMWpkMUs--cDaA9UUgSL4O5vJuFyU0G5jhy4L8UpxQXLGHwak.png?width=108&amp;crop=smart&amp;format=pjpg&amp;auto=webp&amp;s=e753e785a08db758cac8ac04a0ff7ee288ea9936", "width": 108, "height": 192}, {"url": "https://external-preview.redd.it/ejJqOWJzNmZxMWpkMUs--cDaA9UUgSL4O5vJuFyU0G5jhy4L8UpxQXLGHwak.png?width=216&amp;crop=smart&amp;format=pjpg&amp;auto=webp&amp;s=42a03747c24f15684f278411412378ecd90503e3", "width": 216, "height": 384}, {"url": "https://external-preview.redd.it/ejJqOWJzNmZxMWpkMUs--cDaA9UUgSL4O5vJuFyU0G5jhy4L8UpxQXLGHwak.png?width=320&amp;crop=smart&amp;format=pjpg&amp;auto=webp&amp;s=936843476ecd2b8346b28a393a62a1ccc927453f", "width": 320, "height": 568}, {"url": "https://external-preview.redd.it/ejJqOWJzNmZxMWpkMUs--cDaA9UUgSL4O5vJuFyU0G5jhy4L8UpxQXLGHwak.png?width=640&amp;crop=smart&amp;format=pjpg&amp;auto=webp&amp;s=04476d55f29ad49a141931e50efde8bb131794df", "width": 640, "height": 1137}], "variants": {}, "id": "ejJqOWJzNmZxMWpkMUs--cDaA9UUgSL4O5vJuFyU0G5jhy4L8UpxQXLGHwak"}], "enabled": false}, "all_awardings": [], "awarders": [], "media_only": false, "link_flair_template_id": "eac4405e-e96f-11e3-a75b-12313d18e5cd", "can_gild": false, "spoiler": false, "locked": false, "author_flair_text": null, "treatment_tags": [], "visited": false, "removed_by": null, "mod_note": null, "distinguished": null, "subreddit_id": "t5_2rk5q", "author_is_blocked": false, "mod_reason_by": null, "num_reports": null, "removal_reason": null, "link_flair_background_color": "#7193ff", "id": "1ets3gq", "is_robot_indexable": true, "report_reasons": null, "author": "7hamza1", "discussion_type": null, "num_comments": 172, "send_replies": false, "whitelist_status": "all_ads", "contest_mode": false, "mod_reports": [], "author_patreon_flair": false, "author_flair_text_color": null, "permalink": "/r/3Dprinting/comments/1ets3gq/just_had_to_do_it_myself/", "parent_whitelist_status": "all_ads", "stickied": false, "url": "https://v.redd.it/9i0kvudfq1jd1", "subreddit_subscribers": 2473981, "created_utc": 1723822902.0, "num_crossposts": 2, "media": {"reddit_video": {"bitrate_kbps": 2400, "fallback_url": "https://v.redd.it/9i0kvudfq1jd1/DASH_720.mp4?source=fallback", "has_audio": true, "height": 1280, "width": 720, "scrubber_media_url": "https://v.redd.it/9i0kvudfq1jd1/DASH_96.mp4", "dash_url": "https://v.redd.it/9i0kvudfq1jd1/DASHPlaylist.mpd?a=1726488764%2COTU5MmM3MjNjZjBlYWU2N2Q3YWNiZWE0Y2ZmNjViMTM5ZTQxMDBkYzM4N2U4NjhlZjkxZjUxZTdlYjQ0ZmI5Yw%3D%3D&amp;v=1&amp;f=sd", "duration": 67, "hls_url": "https://v.redd.it/9i0kvudfq1jd1/HLSPlaylist.m3u8?a=1726488764%2CYjdhNmIxMjdkYTgzZGM0M2ZlMTE2ZTVkMTQ5YWM4NDlhZTI1OTg4MmFmZWVkNDVkNGM5MGM5M2ZhYmI3ZTk2NA%3D%3D&amp;v=1&amp;f=sd", "is_gif": false, "transcoding_status": "completed"}}, "is_video": true}], "created": 1723830488.0, "link_flair_type": "text", "wls": 6, "removed_by_category": null, "banned_by": null, "author_flair_type": "text", "domain": "v.redd.it", "allow_live_comments": false, "selftext_html": null, "likes": true, "suggested_sort": null, "banned_at_utc": null, "url_overridden_by_dest": "https://v.redd.it/9i0kvudfq1jd1", "view_count": null, "archived": false, "no_follow": false, "is_crosspostable": true, "pinned": false, "over_18": false, "preview": {"images": [{"source": {"url": "https://external-preview.redd.it/ejJqOWJzNmZxMWpkMUs--cDaA9UUgSL4O5vJuFyU0G5jhy4L8UpxQXLGHwak.png?auto=webp&amp;s=ec1d055d77b5d5ad0a77928cb0f4771324f07adf", "width": 720, "height": 1280}, "resolutions": [{"url": "https://external-preview.redd.it/ejJqOWJzNmZxMWpkMUs--cDaA9UUgSL4O5vJuFyU0G5jhy4L8UpxQXLGHwak.png?width=108&amp;crop=smart&amp;auto=webp&amp;s=273d7b055eccf730f724564c9cc6755beffe69cc", "width": 108, "height": 192}, {"url": "https://external-preview.redd.it/ejJqOWJzNmZxMWpkMUs--cDaA9UUgSL4O5vJuFyU0G5jhy4L8UpxQXLGHwak.png?width=216&amp;crop=smart&amp;auto=webp&amp;s=60cfe590f0f5b3b23ec4d026a9e4c5b670c3b985", "width": 216, "height": 384}, {"url": "https://external-preview.redd.it/ejJqOWJzNmZxMWpkMUs--cDaA9UUgSL4O5vJuFyU0G5jhy4L8UpxQXLGHwak.png?width=320&amp;crop=smart&amp;auto=webp&amp;s=f7d1354c7062cbad3ca4f04dab6d7fea5bdadf10", "width": 320, "height": 568}, {"url": "https://external-preview.redd.it/ejJqOWJzNmZxMWpkMUs--cDaA9UUgSL4O5vJuFyU0G5jhy4L8UpxQXLGHwak.png?width=640&amp;crop=smart&amp;auto=webp&amp;s=a7a51d976fc20190d9abffa4c30a25c45f2bc65d", "width": 640, "height": 1137}], "variants": {}, "id": "ejJqOWJzNmZxMWpkMUs--cDaA9UUgSL4O5vJuFyU0G5jhy4L8UpxQXLGHwak"}], "enabled": false}, "all_awardings": [], "awarders": [], "media_only": false, "link_flair_template_id": "c554d4ae-fb0d-11e9-833d-0e683d003f3c", "can_gild": false, "spoiler": false, "locked": false, "author_flair_text": null, "treatment_tags": [], "visited": false, "removed_by": null, "num_reports": null, "distinguished": null, "subreddit_id": "t5_2qim4", "author_is_blocked": false, "mod_reason_by": null, "removal_reason": null, "link_flair_background_color": "#0079d3", "id": "1etv965", "is_robot_indexable": true, "report_reasons": null, "author": "7hamza1", "discussion_type": null, "num_comments": 31, "send_replies": true, "whitelist_status": "all_ads", "contest_mode": false, "mod_reports": [], "author_patreon_flair": false, "crosspost_parent": "t3_1ets3gq", "author_flair_text_color": null, "permalink": "/r/blender/comments/1etv965/just_had_to_do_it_myself/", "parent_whitelist_status": "all_ads", "stickied": false, "url": "https://v.redd.it/9i0kvudfq1jd1", "subreddit_subscribers": 1209779, "created_utc": 1723830488.0, "num_crossposts": 0, "media": null, "is_video": false}}], "before": null}}`),
+			ExpectedResult: FetchResultMedia{
+				Medias: FetchResultMediaEntries{
+					{
+						Link:    "https://v.redd.it/9i0kvudfq1jd1/DASH_720.mp4",
+						Quality: "720p",
+					},
+					{
+						Link:    "https://v.redd.it/9i0kvudfq1jd1/DASH_480.mp4",
+						Quality: "480p",
+					},
+					{
+						Link:    "https://v.redd.it/9i0kvudfq1jd1/DASH_360.mp4",
+						Quality: "360p",
+					},
+					{
+						Link:    "https://v.redd.it/9i0kvudfq1jd1/DASH_270.mp4",
+						Quality: "270p",
+					},
+					{
+						Link:    "https://v.redd.it/9i0kvudfq1jd1/DASH_220.mp4",
+						Quality: "220p",
+					},
+					{
+						Link:    "https://v.redd.it/9i0kvudfq1jd1/DASH_AUDIO_128.mp4",
+						Quality: "Audio",
+					},
+				},
+				ThumbnailLinks: FetchedThumbnails{
+					{
+						Link: "https://external-preview.redd.it/ejJqOWJzNmZxMWpkMUs--cDaA9UUgSL4O5vJuFyU0G5jhy4L8UpxQXLGHwak.png?width=108&crop=smart&auto=webp&s=273d7b055eccf730f724564c9cc6755beffe69cc",
+						Dim: Dimension{
+							Width:  108,
+							Height: 192,
+						},
+					},
+					{
+						Link: "https://external-preview.redd.it/ejJqOWJzNmZxMWpkMUs--cDaA9UUgSL4O5vJuFyU0G5jhy4L8UpxQXLGHwak.png?width=216&crop=smart&auto=webp&s=60cfe590f0f5b3b23ec4d026a9e4c5b670c3b985",
+						Dim: Dimension{
+							Width:  216,
+							Height: 384,
+						},
+					},
+					{
+						Link: "https://external-preview.redd.it/ejJqOWJzNmZxMWpkMUs--cDaA9UUgSL4O5vJuFyU0G5jhy4L8UpxQXLGHwak.png?width=320&crop=smart&auto=webp&s=f7d1354c7062cbad3ca4f04dab6d7fea5bdadf10",
+						Dim: Dimension{
+							Width:  320,
+							Height: 568,
+						},
+					},
+					{
+						Link: "https://external-preview.redd.it/ejJqOWJzNmZxMWpkMUs--cDaA9UUgSL4O5vJuFyU0G5jhy4L8UpxQXLGHwak.png?width=640&crop=smart&auto=webp&s=a7a51d976fc20190d9abffa4c30a25c45f2bc65d",
+						Dim: Dimension{
+							Width:  640,
+							Height: 1137,
+						},
+					},
+					{
+						Link: "https://external-preview.redd.it/ejJqOWJzNmZxMWpkMUs--cDaA9UUgSL4O5vJuFyU0G5jhy4L8UpxQXLGHwak.png?auto=webp&s=ec1d055d77b5d5ad0a77928cb0f4771324f07adf",
+						Dim: Dimension{
+							Width:  720,
+							Height: 1280,
+						},
+					},
+				},
+				Title:    "Just had to do it myself ✨",
+				Duration: 67,
+				Type:     FetchResultMediaTypeVideo,
 			},
 			ExpectedError: nil,
 		},

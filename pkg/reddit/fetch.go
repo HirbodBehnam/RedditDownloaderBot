@@ -217,7 +217,7 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 	title := root["title"].(string)
 	title = html.UnescapeString(title)
 	// Check thumbnail; This must be done before checking cross posts
-	thumbnailUrl := extractThumbnail(root)
+	thumbnails := extractThumbnails(root)
 	// Check cross post
 	if _, crossPost := root["crosspost_parent_list"]; crossPost {
 		c := root["crosspost_parent_list"].([]interface{})
@@ -230,8 +230,8 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 		switch hint.(string) {
 		case "image": // image or gif
 			result := FetchResultMedia{
-				ThumbnailLink: thumbnailUrl,
-				Title:         title,
+				ThumbnailLinks: thumbnails,
+				Title:          title,
 			}
 			if root["url"].(string)[len(root["url"].(string))-3:] == "gif" {
 				result.Type = FetchResultMediaTypeGif
@@ -253,8 +253,8 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 				if link, ok := root["url"].(string); ok && (strings.HasPrefix(link, "https://i.redd.it/") || strings.HasPrefix(link, "https://i.imgur.com/")) {
 					result.Medias = []FetchResultMediaEntry{
 						{
-							link,
-							"Original",
+							Link:    link,
+							Quality: "Original",
 						},
 					}
 				}
@@ -269,9 +269,9 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 						Link:    u[:len(u)-4] + "mp4",
 						Quality: "Imgur", // It doesn't matter
 					}},
-					ThumbnailLink: thumbnailUrl,
-					Title:         title,
-					Type:          FetchResultMediaTypeGif,
+					ThumbnailLinks: thumbnails,
+					Title:          title,
+					Type:           FetchResultMediaTypeGif,
 				}, nil
 			}
 			return FetchResultText{
@@ -291,11 +291,11 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 				}
 			}
 			return FetchResultMedia{
-				Medias:        qualities,
-				ThumbnailLink: thumbnailUrl,
-				Title:         title,
-				Duration:      int64(duration),
-				Type:          FetchResultMediaTypeVideo,
+				Medias:         qualities,
+				ThumbnailLinks: thumbnails,
+				Title:          title,
+				Duration:       int64(duration),
+				Type:           FetchResultMediaTypeVideo,
 			}, nil
 		case "rich:video": // files hosted other than reddit; This bot currently supports Gfycat.com
 			if urlObject, domainExists := root["domain"]; domainExists {
@@ -305,10 +305,10 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 					if _, hasVariants := images["variants"]; hasVariants {
 						if mp4, hasMp4 := images["variants"].(map[string]interface{})["mp4"]; hasMp4 {
 							return FetchResultMedia{
-								Medias:        extractPhotoGifQualities(mp4.(map[string]interface{})),
-								ThumbnailLink: thumbnailUrl,
-								Title:         title,
-								Type:          FetchResultMediaTypeGif,
+								Medias:         extractPhotoGifQualities(mp4.(map[string]interface{})),
+								ThumbnailLinks: thumbnails,
+								Title:          title,
+								Type:           FetchResultMediaTypeGif,
 							}, nil
 						}
 					}
@@ -325,10 +325,10 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 								}
 							}
 							return FetchResultMedia{
-								Medias:        qualities,
-								ThumbnailLink: thumbnailUrl,
-								Title:         title,
-								Type:          FetchResultMediaTypeVideo,
+								Medias:         qualities,
+								ThumbnailLinks: thumbnails,
+								Title:          title,
+								Type:           FetchResultMediaTypeVideo,
 							}, nil
 						}
 					}
@@ -359,9 +359,9 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 							Link:    "",
 							Quality: "streamable",
 						}},
-						ThumbnailLink: thumbnailUrl,
-						Title:         title,
-						Type:          FetchResultMediaTypeVideo,
+						ThumbnailLinks: thumbnails,
+						Title:          title,
+						Type:           FetchResultMediaTypeVideo,
 					}
 					doc.Find("meta").Each(func(i int, s *goquery.Selection) {
 						if name, _ := s.Attr("property"); name == "og:video" {
@@ -409,9 +409,11 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 								Link:    doc.Gif.Urls.Sd,
 							},
 						},
-						ThumbnailLink: doc.Gif.Urls.Thumbnail,
-						Title:         title,
-						Type:          FetchResultMediaTypeVideo,
+						ThumbnailLinks: FetchedThumbnails{FetchedThumbnail{
+							Link: doc.Gif.Urls.Thumbnail,
+						}},
+						Title: title,
+						Type:  FetchResultMediaTypeVideo,
 					}
 
 					if doc.Gif.Urls.Gif != "" {
@@ -605,24 +607,29 @@ func extractLinkAndRes(data interface{}) (u string, width string, height string)
 	return html.UnescapeString(kv["url"].(string)), strconv.Itoa(int(kv["width"].(float64))), strconv.Itoa(int(kv["height"].(float64)))
 }
 
-// Extract the thumbnail based on the root of the document.
+// Extract the thumbnails based on the root of the document.
 // Will return an empty string if the thumbnail could not be found.
-func extractThumbnail(root map[string]interface{}) string {
+func extractThumbnails(root map[string]interface{}) FetchedThumbnails {
 	// At first check the thumbnail in the preview section.
 	if preview, ok := root["preview"].(map[string]interface{}); ok {
 		if images, ok := preview["images"].([]interface{}); ok && len(images) > 0 {
 			// I don't know when the len is more than 1. In albums this entry is non-existent
 			if index, ok := images[0].(map[string]interface{}); ok {
-				if source, ok := index["source"].(map[string]interface{}); ok {
-					if u, ok := source["url"]; ok {
-						thumbnailUrl := html.UnescapeString(u.(string))
-						// Check the url; Sometimes, the value of this is default
-						if util.IsUrl(thumbnailUrl) {
-							return thumbnailUrl
-						}
-						// fallback to root thumbnail
+				resolutions, _ := index["resolutions"].([]interface{})
+				result := make([]FetchedThumbnail, 0, len(resolutions)+1)
+				for _, resolution := range resolutions {
+					if thumb, ok := extractPreviewThumbnail(resolution); ok {
+						result = append(result, thumb)
 					}
 				}
+				if thumb, ok := extractPreviewThumbnail(index["source"]); ok {
+					result = append(result, thumb)
+				}
+				// At last, check if the result has at least one entry
+				if len(result) != 0 {
+					return result
+				}
+				// Fallback to the root thumbnail
 			}
 		}
 	}
@@ -630,11 +637,36 @@ func extractThumbnail(root map[string]interface{}) string {
 	if t, ok := root["thumbnail"]; ok {
 		thumbnailUrl := html.UnescapeString(t.(string))
 		// Check the url; Sometimes, the value of this is default or NSFW
-		if !util.IsUrl(thumbnailUrl) {
-			thumbnailUrl = ""
+		if util.IsUrl(thumbnailUrl) {
+			return FetchedThumbnails{FetchedThumbnail{
+				Link: thumbnailUrl,
+				Dim:  Dimension{}, // left empty...
+			}}
 		}
-		return thumbnailUrl
+
 	}
 	// Nothing found. Return empty string
-	return ""
+	return nil
+}
+
+func extractPreviewThumbnail(resolution interface{}) (FetchedThumbnail, bool) {
+	if r, ok := resolution.(map[string]interface{}); ok {
+		if u, ok := r["url"]; ok {
+			thumbnailUrl := html.UnescapeString(u.(string))
+			width, _ := r["width"].(float64)
+			height, _ := r["height"].(float64)
+			// Check the url; Sometimes, the value is not a URL and a generic string
+			if util.IsUrl(thumbnailUrl) {
+				return FetchedThumbnail{
+					Link: thumbnailUrl,
+					Dim: Dimension{
+						Width:  int64(width),
+						Height: int64(height),
+					},
+				}, true
+			}
+		}
+	}
+	// Failed
+	return FetchedThumbnail{}, false
 }

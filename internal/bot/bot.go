@@ -112,12 +112,12 @@ func (c *Client) fetchPostDetailsAndSend(bot *gotgbot.Bot, ctx *ext.Context) err
 		if len(data.Medias) == 1 && data.Type != reddit.FetchResultMediaTypePhoto {
 			switch data.Type {
 			case reddit.FetchResultMediaTypeGif:
-				return c.handleGifUpload(bot, data.Medias[0].Link, data.Title, data.ThumbnailLink, realPostUrl, ctx.EffectiveChat.Id)
+				return c.handleGifUpload(bot, data.Medias[0].Link, data.Title, data.ThumbnailLinks.SelectThumbnail(maxThumbnailDimensions), realPostUrl, ctx.EffectiveChat.Id)
 			case reddit.FetchResultMediaTypeVideo:
 				// If the video does have an audio, ask user if they want the audio
 				if _, hasAudio := data.HasAudio(); !hasAudio {
 					// Otherwise, just download the video
-					return c.handleVideoUpload(bot, data.Medias[0].Link, "", data.Title, data.ThumbnailLink, realPostUrl, data.Duration, ctx.EffectiveChat.Id)
+					return c.handleVideoUpload(bot, data.Medias[0].Link, "", data.Title, data.ThumbnailLinks.SelectThumbnail(maxThumbnailDimensions), realPostUrl, data.Duration, ctx.EffectiveChat.Id)
 				}
 			default:
 				panic("Shash")
@@ -140,7 +140,7 @@ func (c *Client) fetchPostDetailsAndSend(bot *gotgbot.Bot, ctx *ext.Context) err
 			PostLink:      realPostUrl,
 			Links:         data.Medias.ToLinkMap(),
 			Title:         data.Title,
-			ThumbnailLink: data.ThumbnailLink,
+			ThumbnailLink: data.ThumbnailLinks.SelectThumbnail(maxThumbnailDimensions),
 			Type:          data.Type,
 			Duration:      data.Duration,
 			AudioIndex:    audioIndex,

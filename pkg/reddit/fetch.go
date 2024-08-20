@@ -2,7 +2,6 @@ package reddit
 
 import (
 	"RedditDownloaderBot/pkg/common"
-	"RedditDownloaderBot/pkg/reddit/helpers"
 	"RedditDownloaderBot/pkg/util"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
@@ -161,6 +160,7 @@ func getCommentFromRoot(root map[string]interface{}) interface{} {
 			Medias: []FetchResultMediaEntry{{
 				Link:    fmt.Sprintf("https://i.giphy.com/media/%s/giphy.gif", matches[1]),
 				Quality: "Giphy",
+				Dim:     Dimension{}, // We do not have the dimensions of this GIF unless we download it
 			}},
 			Type:  FetchResultMediaTypeGif,
 			Title: strings.ReplaceAll(text, matches[0], ""),
@@ -242,7 +242,8 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 					gifDownloadUrl = gifDownloadUrl[:lastSlash+1] + "download" + gifDownloadUrl[lastSlash:]
 					result.Medias = []FetchResultMediaEntry{{
 						Link:    gifDownloadUrl,
-						Quality: "Imgur", // It doesn't matter
+						Quality: "Imgur",     // It doesn't matter
+						Dim:     Dimension{}, // We cannot get the dimension unless we download it
 					}}
 				} else {
 					result.Medias = extractPhotoGifQualities(root["preview"].(map[string]interface{})["images"].([]interface{})[0].(map[string]interface{})["variants"].(map[string]interface{})["mp4"].(map[string]interface{}))
@@ -255,6 +256,7 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 						{
 							Link:    link,
 							Quality: "Original",
+							Dim:     Dimension{}, // Reddit does not give the dimension of the original photo
 						},
 					}
 				}
@@ -267,7 +269,8 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 				return FetchResultMedia{
 					Medias: []FetchResultMediaEntry{{
 						Link:    u[:len(u)-4] + "mp4",
-						Quality: "Imgur", // It doesn't matter
+						Quality: "Imgur",     // It doesn't matter
+						Dim:     Dimension{}, // Must be downloaded
 					}},
 					ThumbnailLinks: thumbnails,
 					Title:          title,
@@ -358,6 +361,7 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 						Medias: []FetchResultMediaEntry{{
 							Link:    "",
 							Quality: "streamable",
+							Dim:     Dimension{}, // Nope again. We have to download
 						}},
 						ThumbnailLinks: thumbnails,
 						Title:          title,
@@ -368,60 +372,6 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 							result.Medias[0].Link, _ = s.Attr("content")
 						}
 					})
-					return result, nil
-				case "redgifs.com":
-					// get RedGIFs info from api
-					redgifsid := helpers.GetRedGifsID(root["url"].(string))
-					if redgifsid == "" {
-						return nil, &FetchError{
-							NormalError: "Unable to get RedGIFs ID from " + root["url"].(string),
-							BotError:    "Unable to get RedGIFs ID from  " + root["url"].(string),
-						}
-					}
-
-					// api for RedGIFs is in https://i.redgifs.com/docs/index.html
-					infoUrl := fmt.Sprintf("https://api.redgifs.com/v2/gifs/%s", redgifsid)
-
-					source, err := common.GlobalHttpClient.Get(infoUrl)
-					if err != nil {
-						return nil, &FetchError{
-							NormalError: "Unable to get RedGIFs info " + infoUrl + ": " + err.Error(),
-							BotError:    "Unable to get RedGIFs info " + infoUrl,
-						}
-					}
-					defer source.Body.Close()
-					// get video urls
-					doc, err := helpers.GetRedGifsInfo(source.Body)
-					if err != nil {
-						return nil, &FetchError{
-							NormalError: "Unable to get the parse RedGIFs info from " + infoUrl + ": " + err.Error(),
-							BotError:    "Unable to get the parse RedGIFs info from " + infoUrl,
-						}
-					}
-					result := FetchResultMedia{
-						Medias: []FetchResultMediaEntry{
-							{
-								Quality: "HD",
-								Link:    doc.Gif.Urls.Hd,
-							},
-							{
-								Quality: "SD",
-								Link:    doc.Gif.Urls.Sd,
-							},
-						},
-						ThumbnailLinks: FetchedThumbnails{FetchedThumbnail{
-							Link: doc.Gif.Urls.Thumbnail,
-						}},
-						Title: title,
-						Type:  FetchResultMediaTypeVideo,
-					}
-
-					if doc.Gif.Urls.Gif != "" {
-						result.Medias = append(result.Medias, FetchResultMediaEntry{
-							Quality: "gif",
-							Link:    doc.Gif.Urls.Gif,
-						})
-					}
 					return result, nil
 				default:
 					return nil, &FetchError{
@@ -547,20 +497,29 @@ func extractPhotoGifQualities(data map[string]interface{}) []FetchResultMediaEnt
 		u, w, h := extractLinkAndRes(data["source"])
 		result = append(result, FetchResultMediaEntry{
 			Link:    u,
-			Quality: w + "×" + h,
+			Quality: strconv.FormatInt(w, 10) + "×" + strconv.FormatInt(h, 10),
+			Dim: Dimension{
+				Width:  w,
+				Height: h,
+			},
 		})
 	}
 	// Now get all other thumbs
 	for i := len(resolutions) - 1; i >= 0; i-- {
 		u, w, h := extractLinkAndRes(resolutions[i])
 		if i == len(resolutions)-1 { // In first case, the sizes can be same. Example: https://www.reddit.com/r/dankmemes/comments/vqphiy/more_than_bargain_for/
-			if w+"×"+h == result[0].Quality {
+			dim := Dimension{w, h}
+			if dim == result[0].Dim {
 				continue
 			}
 		}
 		result = append(result, FetchResultMediaEntry{
 			Link:    u,
-			Quality: w + "×" + h,
+			Quality: strconv.FormatInt(w, 10) + "×" + strconv.FormatInt(h, 10),
+			Dim: Dimension{
+				Width:  w,
+				Height: h,
+			},
 		})
 	}
 	return result
@@ -569,18 +528,19 @@ func extractPhotoGifQualities(data map[string]interface{}) []FetchResultMediaEnt
 // extractVideoQualities gets all possible qualities from DASHPlaylist URL
 func extractVideoQualities(DASHPlaylistURL string) ([]FetchResultMediaEntry, error) {
 	// Get the list from dash playlist
-	qualities, err := helpers.ParseDashPlaylistFromID(DASHPlaylistURL)
+	qualities, err := ParseDashPlaylistFromID(html.UnescapeString(DASHPlaylistURL))
 	if err != nil {
 		return nil, err
 	}
-	helpers.SortVideoQualities(qualities.AvailableVideos)
+	SortVideoQualities(qualities.AvailableVideos)
 	base := getVideoVRedditBaseURL(DASHPlaylistURL)
 	// Convert the qualities
 	result := make([]FetchResultMediaEntry, 0, len(qualities.AvailableVideos)+1)
 	for _, video := range qualities.AvailableVideos {
 		result = append(result, FetchResultMediaEntry{
-			Link:    base + string(video),
+			Link:    base + video.BaseURL,
 			Quality: video.Quality() + "p",
+			Dim:     video.Dimension,
 		})
 	}
 	// Check for audio
@@ -602,9 +562,9 @@ func getVideoVRedditBaseURL(vredditURL string) string {
 
 // extractLinkAndRes extracts the data from "source":{ "url":"https://preview.redd.it/utx00pfe4cp41.jpg?auto=webp&amp;s=de4ff82478b12df6369b8d7eeca3894f094e87e1", "width":624, "height":960 } stuff
 // First return values are url, width, height
-func extractLinkAndRes(data interface{}) (u string, width string, height string) {
+func extractLinkAndRes(data interface{}) (u string, width int64, height int64) {
 	kv := data.(map[string]interface{})
-	return html.UnescapeString(kv["url"].(string)), strconv.Itoa(int(kv["width"].(float64))), strconv.Itoa(int(kv["height"].(float64)))
+	return html.UnescapeString(kv["url"].(string)), int64(kv["width"].(float64)), int64(kv["height"].(float64))
 }
 
 // Extract the thumbnails based on the root of the document.

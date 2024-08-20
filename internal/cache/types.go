@@ -8,7 +8,7 @@ type CallbackDataCached struct {
 	// The link of the post itself
 	PostLink string
 	// The list of links which the one in CallbackButtonData.LinkKey is used
-	Links map[int]string
+	Links map[int]Media
 	// Title of the post
 	Title string
 	// Thumbnail link of the post. Note that this is the preferred link which will be used.
@@ -21,4 +21,13 @@ type CallbackDataCached struct {
 	Duration int64
 	// What media is this
 	Type reddit.FetchResultMediaType
+}
+
+// Media holds the information for a media in reddit
+type Media struct {
+	Link string
+	// Width of the thing. Can be zero
+	Width int64
+	// Height of the thing. Can be zero
+	Height int64
 }

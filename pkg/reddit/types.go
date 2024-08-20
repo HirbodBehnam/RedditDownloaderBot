@@ -41,20 +41,11 @@ type FetchResultMediaEntry struct {
 	Quality string
 	// The dimensions of this media. Will be zeroed if there was
 	// any problem getting the dimension.
-	//Dim Dimension commented out for now...
+	Dim Dimension
 }
 
 // FetchResultMediaEntries is a list of FetchResultMediaEntry
 type FetchResultMediaEntries []FetchResultMediaEntry
-
-// ToLinkMap creates a map of int -> string which represents the index of each entry with the link of it
-func (e FetchResultMediaEntries) ToLinkMap() map[int]string {
-	result := make(map[int]string, len(e))
-	for i, media := range e {
-		result[i] = media.Link
-	}
-	return result
-}
 
 // FetchedThumbnail shows one of the fetched thumbnails and it's size
 type FetchedThumbnail struct {
@@ -145,4 +136,10 @@ type FetchResultAlbum struct {
 type Dimension struct {
 	Width  int64
 	Height int64
+}
+
+// Empty checks if both width and height of the dimension is zero. This means
+// that the bot couldn't get the width and height of the media.
+func (d Dimension) Empty() bool {
+	return d.Width == 0 && d.Height == 0
 }

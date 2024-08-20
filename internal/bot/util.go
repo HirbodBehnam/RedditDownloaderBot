@@ -1,6 +1,7 @@
 package bot
 
 import (
+	"RedditDownloaderBot/internal/cache"
 	"RedditDownloaderBot/pkg/reddit"
 	"RedditDownloaderBot/pkg/util"
 	"github.com/PaulSonOfLars/gotgbot/v2"
@@ -108,4 +109,18 @@ func fileReaderFromOsFile(file *os.File) *gotgbot.FileReader {
 		return nil
 	}
 	return &gotgbot.FileReader{Name: s.Name(), Data: file}
+}
+
+// getLinkMapOfFetchResultMediaEntries will get a map which holds the index of each entry plus its
+// dimension
+func getLinkMapOfFetchResultMediaEntries(entries reddit.FetchResultMediaEntries) map[int]cache.Media {
+	result := make(map[int]cache.Media, len(entries))
+	for i, media := range entries {
+		result[i] = cache.Media{
+			Link:   media.Link,
+			Width:  media.Dim.Width,
+			Height: media.Dim.Height,
+		}
+	}
+	return result
 }

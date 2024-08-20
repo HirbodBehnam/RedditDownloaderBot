@@ -13,9 +13,9 @@ import (
 )
 
 // handleGifUpload downloads a gif and then uploads it to Telegram
-func (c *Client) handleGifUpload(bot *gotgbot.Bot, gifUrl, title, thumbnailUrl, postUrl string, chatID int64) error {
+func (c *Client) handleGifUpload(bot *gotgbot.Bot, gifUrl, title, thumbnailUrl, postUrl string, dimension reddit.Dimension, chatID int64) error {
 	// Inform the user we are doing some shit
-	stopReportChannel := statusReporter(bot, chatID, "upload_video")
+	stopReportChannel := statusReporter(bot, chatID, gotgbot.ChatActionUploadVideo)
 	defer close(stopReportChannel)
 	// Download the gif
 	tmpFile, err := c.RedditOauth.DownloadGif(gifUrl)
@@ -48,16 +48,18 @@ func (c *Client) handleGifUpload(bot *gotgbot.Bot, gifUrl, title, thumbnailUrl, 
 		}
 	}
 	// Check dimension
-	dimensions, err := reddit.GetVideoDimensions(tmpFile.Name())
-	if err != nil {
-		log.Println("Cannot get dimensions of GIF:", err)
+	if dimension.Empty() {
+		dimension, err = reddit.GetVideoDimensions(tmpFile.Name())
+		if err != nil {
+			log.Println("Cannot get dimensions of GIF:", err)
+		}
 	}
 	// Upload it
 	animationOpt := &gotgbot.SendAnimationOpts{
 		Caption:   addLinkIfNeeded(escapeMarkdown(title), postUrl),
 		ParseMode: gotgbot.ParseModeMarkdownV2,
-		Width:     dimensions.Width,
-		Height:    dimensions.Height,
+		Width:     dimension.Width,
+		Height:    dimension.Height,
 	}
 	if tmpThumbnailFile != nil {
 		animationOpt.Thumbnail = fileReaderFromOsFile(tmpThumbnailFile)
@@ -71,9 +73,9 @@ func (c *Client) handleGifUpload(bot *gotgbot.Bot, gifUrl, title, thumbnailUrl, 
 }
 
 // handleVideoUpload downloads a video and then uploads it to Telegram
-func (c *Client) handleVideoUpload(bot *gotgbot.Bot, vidUrl, audioUrl, title, thumbnailUrl, postUrl string, duration, chatID int64) error {
+func (c *Client) handleVideoUpload(bot *gotgbot.Bot, vidUrl, audioUrl, title, thumbnailUrl, postUrl string, dimension reddit.Dimension, duration, chatID int64) error {
 	// Inform the user we are doing some shit
-	stopReportChannel := statusReporter(bot, chatID, "upload_video")
+	stopReportChannel := statusReporter(bot, chatID, gotgbot.ChatActionUploadVideo)
 	defer close(stopReportChannel)
 	// Download the gif
 	tmpFile, err := c.RedditOauth.DownloadVideo(vidUrl, audioUrl)
@@ -109,9 +111,11 @@ func (c *Client) handleVideoUpload(bot *gotgbot.Bot, vidUrl, audioUrl, title, th
 		}
 	}
 	// Check dimension
-	dimensions, err := reddit.GetVideoDimensions(tmpFile.Name())
-	if err != nil {
-		log.Println("Cannot get dimensions of video:", err)
+	if dimension.Empty() {
+		dimension, err = reddit.GetVideoDimensions(tmpFile.Name())
+		if err != nil {
+			log.Println("Cannot get dimensions of video:", err)
+		}
 	}
 	// Upload it
 	videoOpt := &gotgbot.SendVideoOpts{
@@ -119,8 +123,8 @@ func (c *Client) handleVideoUpload(bot *gotgbot.Bot, vidUrl, audioUrl, title, th
 		Caption:           addLinkIfNeeded(escapeMarkdown(title), postUrl),
 		ParseMode:         gotgbot.ParseModeMarkdownV2,
 		SupportsStreaming: true,
-		Width:             dimensions.Width,
-		Height:            dimensions.Height,
+		Width:             dimension.Width,
+		Height:            dimension.Height,
 	}
 	if tmpThumbnailFile != nil {
 		videoOpt.Thumbnail = fileReaderFromOsFile(tmpThumbnailFile)
@@ -138,9 +142,9 @@ func (c *Client) handlePhotoUpload(bot *gotgbot.Bot, photoUrl, title, thumbnailU
 	// Inform the user we are doing some shit
 	var stopReportChannel chan struct{}
 	if asPhoto {
-		stopReportChannel = statusReporter(bot, chatID, "upload_photo")
+		stopReportChannel = statusReporter(bot, chatID, gotgbot.ChatActionUploadPhoto)
 	} else {
-		stopReportChannel = statusReporter(bot, chatID, "upload_document")
+		stopReportChannel = statusReporter(bot, chatID, gotgbot.ChatActionUploadDocument)
 	}
 	defer close(stopReportChannel)
 	// Download the gif
@@ -202,7 +206,7 @@ func (c *Client) handlePhotoUpload(bot *gotgbot.Bot, photoUrl, title, thumbnailU
 // handleAlbumUpload uploads an album to Telegram
 func (c *Client) handleAlbumUpload(bot *gotgbot.Bot, album reddit.FetchResultAlbum, chatID int64, asFile bool) error {
 	// Report status
-	stopReportChannel := statusReporter(bot, chatID, "upload_photo")
+	stopReportChannel := statusReporter(bot, chatID, gotgbot.ChatActionUploadPhoto)
 	defer close(stopReportChannel)
 	// Download each file of album
 	var err error
@@ -297,7 +301,7 @@ func (c *Client) handleAlbumUpload(bot *gotgbot.Bot, album reddit.FetchResultAlb
 // handleAudioUpload simply downloads then uploads an audio to Telegram
 func (c *Client) handleAudioUpload(bot *gotgbot.Bot, audioURL, title, postUrl string, duration, chatID int64) error {
 	// Send status
-	stopReportChannel := statusReporter(bot, chatID, "upload_voice")
+	stopReportChannel := statusReporter(bot, chatID, gotgbot.ChatActionUploadVoice)
 	defer close(stopReportChannel)
 	// Create a temp file
 	audioFile, err := c.RedditOauth.DownloadAudio(audioURL)
@@ -326,8 +330,6 @@ func (c *Client) handleAudioUpload(bot *gotgbot.Bot, audioURL, title, postUrl st
 // statusReporter starts reporting for uploading a thing in telegram
 // This function returns a channel which a message must be sent to it when reporting must be stopped
 // You can also close the channel to stop the reporter.
-//
-// TODO: later after the next release of the bot, use ChatAction... types
 func statusReporter(bot *gotgbot.Bot, chatID int64, action string) chan struct{} {
 	doneChan := make(chan struct{}, 1)
 	go statusReporterGoroutine(bot, chatID, action, doneChan)

@@ -39,7 +39,6 @@ Table of Contents
 1. Imgur
 2. Gfycat
 3. Streamable
-4. Red GIFs (although currently not working)
 
 # Setup
 

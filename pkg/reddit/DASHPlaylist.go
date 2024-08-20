@@ -1,4 +1,4 @@
-package helpers
+package reddit
 
 import (
 	"RedditDownloaderBot/pkg/common"
@@ -36,14 +36,29 @@ type DashPlaylistRepresentation struct {
 	XMLName xml.Name `xml:"Representation"`
 	BaseURL string   `xml:"BaseURL"`
 	ID      string   `xml:"id,attr"`
+	Width   string   `xml:"width,attr"`
+	Height  string   `xml:"height,attr"`
+}
+
+// Dimension will get the dimension of the given video
+func (d DashPlaylistRepresentation) Dimension() Dimension {
+	w, _ := strconv.ParseInt(d.Width, 10, 64)
+	h, _ := strconv.ParseInt(d.Height, 10, 64)
+	return Dimension{
+		Width:  w,
+		Height: h,
+	}
 }
 
 // AvailableVideo represents a single available video quality for a video on reddit
-type AvailableVideo string
+type AvailableVideo struct {
+	BaseURL   string
+	Dimension Dimension
+}
 
 // Quality gets the quality of a video
 func (v AvailableVideo) Quality() string {
-	numbers := numberRegex.FindStringSubmatch(string(v))
+	numbers := numberRegex.FindStringSubmatch(v.BaseURL)
 	if len(numbers) < 2 {
 		return "NA"
 	}
@@ -74,7 +89,10 @@ func parseDashPlaylist(r io.Reader) (AvailableMedia, error) {
 		case "video":
 			result.AvailableVideos = make([]AvailableVideo, len(media.Qualities))
 			for i, video := range media.Qualities {
-				result.AvailableVideos[i] = AvailableVideo(video.BaseURL)
+				result.AvailableVideos[i] = AvailableVideo{
+					BaseURL:   video.BaseURL,
+					Dimension: video.Dimension(),
+				}
 			}
 		case "audio":
 			result.AvailableAudios = make([]AvailableAudio, len(media.Qualities))
@@ -84,7 +102,7 @@ func parseDashPlaylist(r io.Reader) (AvailableMedia, error) {
 		case "": // Used in very old videos. See tests
 			for _, m := range media.Qualities {
 				if strings.HasPrefix(m.ID, "VIDEO") {
-					result.AvailableVideos = append(result.AvailableVideos, AvailableVideo(m.BaseURL))
+					result.AvailableVideos = append(result.AvailableVideos, AvailableVideo{BaseURL: m.BaseURL, Dimension: m.Dimension()})
 				} else if strings.HasPrefix(m.ID, "AUDIO") {
 					result.AvailableAudios = append(result.AvailableAudios, AvailableAudio(m.BaseURL))
 				}

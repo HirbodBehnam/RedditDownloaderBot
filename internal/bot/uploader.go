@@ -20,7 +20,7 @@ func (c *Client) handleGifUpload(bot *gotgbot.Bot, gifUrl, title, thumbnailUrl, 
 	// Download the gif
 	tmpFile, err := c.RedditOauth.DownloadGif(gifUrl)
 	if err != nil {
-		log.Println("Unable to download GIF", gifUrl, ":", err)
+		log.Println("Unable to download GIF", gifUrl, "for post", postUrl, ":", err)
 		_, err = bot.SendMessage(chatID, "I couldn’t download this GIF.\nHere is the link: "+gifUrl, nil)
 		return err
 	}
@@ -66,7 +66,7 @@ func (c *Client) handleGifUpload(bot *gotgbot.Bot, gifUrl, title, thumbnailUrl, 
 	}
 	_, err = bot.SendAnimation(chatID, fileReaderFromOsFile(tmpFile), animationOpt)
 	if err != nil {
-		log.Println("Unable to upload GIF:", err)
+		log.Println("Unable to upload GIF for post", postUrl, ":", err)
 		_, err = bot.SendMessage(chatID, "I couldn’t upload this GIF.\nHere is the link: "+gifUrl, nil)
 	}
 	return err
@@ -83,7 +83,7 @@ func (c *Client) handleVideoUpload(bot *gotgbot.Bot, vidUrl, audioUrl, title, th
 		if errors.Is(err, reddit.FileTooBigError) {
 			_, err = bot.SendMessage(chatID, "I couldn’t download this file because it’s too large.\n"+generateVideoUrlsMessage(vidUrl, audioUrl), nil)
 		} else {
-			log.Println("Unable to download video", vidUrl, ":", err)
+			log.Println("Unable to download video", vidUrl, "for post", postUrl, ":", err)
 			_, err = bot.SendMessage(chatID, "I couldn’t download this video.\n"+generateVideoUrlsMessage(vidUrl, audioUrl), nil)
 		}
 		return err
@@ -131,7 +131,7 @@ func (c *Client) handleVideoUpload(bot *gotgbot.Bot, vidUrl, audioUrl, title, th
 	}
 	_, err = bot.SendVideo(chatID, fileReaderFromOsFile(tmpFile), videoOpt)
 	if err != nil {
-		log.Println("Unable to upload video:", err)
+		log.Println("Unable to upload video for", postUrl, ":", err)
 		_, err = bot.SendMessage(chatID, "I couldn’t upload this video.\n"+generateVideoUrlsMessage(vidUrl, audioUrl), nil)
 	}
 	return err
@@ -150,7 +150,7 @@ func (c *Client) handlePhotoUpload(bot *gotgbot.Bot, photoUrl, title, thumbnailU
 	// Download the gif
 	tmpFile, err := c.RedditOauth.DownloadPhoto(photoUrl)
 	if err != nil {
-		log.Println("Unable to download photo", photoUrl, ":", err)
+		log.Println("Unable to download photo", photoUrl, "for post", postUrl, ":", err)
 		_, err = bot.SendMessage(chatID, "I couldn’t download this image.\nHere is the link: "+photoUrl, nil)
 		return err
 	}
@@ -197,7 +197,7 @@ func (c *Client) handlePhotoUpload(bot *gotgbot.Bot, photoUrl, title, thumbnailU
 		_, err = bot.SendDocument(chatID, fileReaderFromOsFile(tmpFile), documentOpt)
 	}
 	if err != nil {
-		log.Println("Unable to upload photo:", err)
+		log.Println("Unable to upload photo for post", postUrl, ":", err)
 		_, err = bot.SendMessage(chatID, "I couldn’t upload this image.\nHere is the link: "+photoUrl, nil)
 	}
 	return err
@@ -306,7 +306,7 @@ func (c *Client) handleAudioUpload(bot *gotgbot.Bot, audioURL, title, postUrl st
 	// Create a temp file
 	audioFile, err := c.RedditOauth.DownloadAudio(audioURL)
 	if err != nil {
-		log.Println("Unable to download audio:", err)
+		log.Println("Unable to download audio from", audioURL, "for post", postUrl, ":", err)
 		_, err = bot.SendMessage(chatID, "I couldn’t download the audio.\n"+generateAudioURLMessage(audioURL), nil)
 		return err
 	}
@@ -321,7 +321,7 @@ func (c *Client) handleAudioUpload(bot *gotgbot.Bot, audioURL, title, postUrl st
 		Duration:  duration,
 	})
 	if err != nil {
-		log.Println("Unable to upload audio:", err)
+		log.Println("Unable to upload audio for post", postUrl, ":", err)
 		_, err = bot.SendMessage(chatID, "I couldn’t upload the audio.\n"+generateAudioURLMessage(audioURL), nil)
 	}
 	return err

@@ -216,6 +216,8 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 	// Get the title
 	title := root["title"].(string)
 	title = html.UnescapeString(title)
+	// Get the description (selftext) if it exists
+	description, _ := root["selftext"].(string)
 	// Check thumbnail; This must be done before checking cross posts
 	thumbnails := extractThumbnails(root)
 	// Check cross post
@@ -232,6 +234,7 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 			result := FetchResultMedia{
 				ThumbnailLinks: thumbnails,
 				Title:          title,
+				Description:    description,
 			}
 			if root["url"].(string)[len(root["url"].(string))-3:] == "gif" {
 				result.Type = FetchResultMediaTypeGif
@@ -274,6 +277,7 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 					}},
 					ThumbnailLinks: thumbnails,
 					Title:          title,
+					Description:    description,
 					Type:           FetchResultMediaTypeGif,
 				}, nil
 			}
@@ -299,6 +303,7 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 				Title:          title,
 				Duration:       int64(duration),
 				Type:           FetchResultMediaTypeVideo,
+				Description:    description,
 			}, nil
 		case "rich:video": // files hosted other than reddit; This bot currently supports Gfycat.com
 			if urlObject, domainExists := root["domain"]; domainExists {
@@ -312,6 +317,7 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 								ThumbnailLinks: thumbnails,
 								Title:          title,
 								Type:           FetchResultMediaTypeGif,
+								Description:    description,
 							}, nil
 						}
 					}
@@ -332,6 +338,7 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 								ThumbnailLinks: thumbnails,
 								Title:          title,
 								Type:           FetchResultMediaTypeVideo,
+								Description:    description,
 							}, nil
 						}
 					}
@@ -365,6 +372,7 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 						}},
 						ThumbnailLinks: thumbnails,
 						Title:          title,
+						Description:    description,
 						Type:           FetchResultMediaTypeVideo,
 					}
 					doc.Find("meta").Each(func(i int, s *goquery.Selection) {
@@ -394,7 +402,10 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 	} else { // text or gallery
 		if gData, ok := root["gallery_data"]; ok { // gallery
 			if data, ok := root["media_metadata"]; ok {
-				return getGalleryData(data.(map[string]interface{}), gData.(map[string]interface{})["items"].([]interface{})), nil
+				return FetchResultAlbum{
+					Title: title,
+					Album: getGalleryData(data.(map[string]interface{}), gData.(map[string]interface{})["items"].([]interface{})),
+				}, nil
 			}
 		}
 		// Text
@@ -406,7 +417,7 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 }
 
 // getGalleryData extracts the gallery data from gallery json
-func getGalleryData(files map[string]interface{}, galleryDataItems []interface{}) FetchResultAlbum {
+func getGalleryData(files map[string]interface{}, galleryDataItems []interface{}) []FetchResultAlbumEntry {
 	album := make([]FetchResultAlbumEntry, 0, len(galleryDataItems))
 	for _, data := range galleryDataItems {
 		galleryRoot := files[data.(map[string]interface{})["media_id"].(string)]
@@ -483,7 +494,7 @@ func getGalleryData(files map[string]interface{}, galleryDataItems []interface{}
 			log.Println("Unknown type in send gallery:", dataType)
 		}
 	}
-	return FetchResultAlbum{album}
+	return album
 }
 
 // extractPhotoGifQualities creates an array of FetchResultMediaEntry which are the qualities

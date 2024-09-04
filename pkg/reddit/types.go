@@ -91,6 +91,8 @@ type FetchResultMedia struct {
 	ThumbnailLinks FetchedThumbnails
 	// Title is the title of the post
 	Title string
+	// Description is known as selftext in Reddit API
+	Description string
 	// Duration of the video. This entry does not matter on other types
 	Duration int64
 	// Types says what kind of media is this
@@ -129,6 +131,9 @@ type FetchResultAlbumEntry struct {
 
 // FetchResultAlbum is a result of reddit album
 type FetchResultAlbum struct {
+	// Title of the post
+	Title string
+	// The list of media in album
 	Album []FetchResultAlbumEntry
 }
 

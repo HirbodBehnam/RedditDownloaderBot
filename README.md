@@ -4,16 +4,18 @@ A Telegram bot for downloading Reddit posts.
 
 Table of Contents
 =================
-  * [What this bot can do](#what-this-bot-can-do)
-  * [What this bot cannot do](#what-this-bot-cannot-do)
-    * [List of non x.redd.it hosts from which this bot *can* download](#list-of-non-xreddit-hosts-from-which-this-bot-can-download)
-  * [Setup](#setup)
+
+* [What this bot can do](#what-this-bot-can-do)
+* [What this bot cannot do](#what-this-bot-cannot-do)
+    * [List of non x.redd.it hosts from which this bot
+      *can* download](#list-of-non-xreddit-hosts-from-which-this-bot-can-download)
+* [Setup](#setup)
     * [Build](#build)
     * [Obtain Reddit Token](#obtain-reddit-token)
     * [Obtain Telegram Token](#obtain-telegram-token)
     * [Run](#run)
-  * [Optional Settings](#optional-settings)
-    * [Allowed Users](#allowed-users)  
+* [Optional Settings](#optional-settings)
+    * [Allowed Users](#allowed-users)
     * [Disable NSFW Content](#disable-nsfw-content)
 
 # What this bot can do
@@ -44,7 +46,8 @@ Table of Contents
 
 ## Build
 
-First, install [FFmpeg](https://www.ffmpeg.org). On Debian or Ubuntu, simply run `apt install ffmpeg`. Then, clone and build the project using the following steps.
+First, install [FFmpeg](https://www.ffmpeg.org). On Debian or Ubuntu, simply run `apt install ffmpeg`. Then, clone and
+build the project using the following steps.
 
 ```bash
 git clone https://github.com/HirbodBehnam/RedditDownloaderBot
@@ -54,7 +57,9 @@ go build ./cmd/RedditDownloaderBot/
 
 ## Obtain Reddit Token
 
-To use the bot, you will need Reddit and Telegram tokens. Start by creating a Reddit application. Go to https://www.reddit.com/prefs/apps and click on “are you a developer? create an app...” Choose a name, select `script` as the type of application, input something in the redirect URI field, and click on “create app.”
+To use the bot, you will need Reddit and Telegram tokens. Start by creating a Reddit application. Go
+to https://www.reddit.com/prefs/apps and click on “are you a developer? create an app...” Choose a name, select `script`
+as the type of application, input something in the redirect URI field, and click on “create app.”
 
 <p align="center">
   <img src="https://user-images.githubusercontent.com/63400670/215763728-f4242f17-46bd-421b-ab1c-493d1ec49f3b.png" alt="Creating a Reddit application"/>
@@ -68,7 +73,8 @@ You will be given two tokens: a client ID and a client secret—as shown in the 
 
 ## Obtain Telegram Token
 
-Interact with [BotFather](https://t.me/BotFather) to create a bot and obtain its token. Additionally, you can use this [guide](https://core.telegram.org/bots/tutorial#obtain-your-bot-token).
+Interact with [BotFather](https://t.me/BotFather) to create a bot and obtain its token. Additionally, you can use
+this [guide](https://core.telegram.org/bots/tutorial#obtain-your-bot-token).
 
 Your token will look something like this:
 
@@ -99,7 +105,10 @@ Lastly, run `docker-compose up --build` inside the RedditDownloaderBot directory
 
 ## Allowed Users
 
-You can configure the bot to allow access to only a group of users. This is useful for deploying private bots. To do so, you need to create a whitelist that consists of Telegram user IDs. You can obtain user IDs using [GetIDs Bot](https://t.me/getidsbot). Next, create the environment variable `ALLOWED_USERS` and set its value to user IDs, separated by a comma.
+You can configure the bot to allow access to only a group of users. This is useful for deploying private bots. To do so,
+you need to create a whitelist that consists of Telegram user IDs. You can obtain user IDs
+using [GetIDs Bot](https://t.me/getidsbot). Next, create the environment variable `ALLOWED_USERS` and set its value to
+user IDs, separated by a comma.
 
 ```bash
 export ALLOWED_USERS=1,2,3
@@ -119,4 +128,14 @@ The post link is included in the caption by default. You can disable it by setti
 
 ```bash
 export DISABLE_LINK_IN_CAPTION=true
+```
+
+## Imgur Proxy
+
+The proxy to download the Imgur media through it. Imgur sometimes blocks some IP addresses like Hetzner for example.
+It's interesting because even with authorization it does not work. Even accessing through the browser it does not work
+either. So, someone might use a proxy (like Cloudflare Warp) to bypass this restriction.
+
+```bash
+export IMGUR_PROXY=http://127.0.0.1:10809
 ```

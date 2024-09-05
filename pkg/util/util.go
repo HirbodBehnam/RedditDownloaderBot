@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 	"unsafe"
 )
 
@@ -58,4 +59,12 @@ func ToJsonString(object any) string {
 func ParseEnvironmentVariableBool(name string) bool {
 	result, _ := strconv.ParseBool(os.Getenv(name))
 	return result
+}
+
+func IsImgurLink(link string) bool {
+	u, _ := url.Parse(link)
+	if u == nil { // error probably
+		return false // bruh moment
+	}
+	return strings.HasSuffix(strings.ToLower(u.Host), "imgur.com")
 }

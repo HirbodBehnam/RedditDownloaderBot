@@ -2,11 +2,13 @@ package reddit
 
 import (
 	"RedditDownloaderBot/pkg/common"
+	"RedditDownloaderBot/pkg/util"
 	"encoding/json"
 	"github.com/go-faster/errors"
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -38,6 +40,8 @@ type Oauth struct {
 	authorizationHeader string
 	// When we should make the next request in unix epoch
 	rateLimitFreedom int64
+	// The HTTP client for Imgur downloads (might use proxy)
+	imgurHTTPClient *http.Client
 }
 
 // tokenRequestResponse is the result of https://www.reddit.com/api/v1/access_token endpoint
@@ -52,10 +56,22 @@ func NewRedditOauth(clientId, clientSecret string) (*Oauth, error) {
 		clientId:     clientId,
 		clientSecret: clientSecret,
 	}
+	// Get the token
 	nextRefresh, err := redditOauth.createToken()
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot create initial token")
 	}
+	// The proxy to download the Imgur media through it. Imgur sometimes
+	// blocks some IP addresses like Hetzner for example. It's interesting because
+	// even with authorization it does not work. Even accessing through the browser
+	// it does not work either. So, someone might use a proxy (like Cloudflare Warp)
+	// to bypass this restriction.
+	if imgurProxy := os.Getenv("IMGUR_PROXY"); imgurProxy != "" {
+		if imgurProxyUrl, _ := url.Parse(imgurProxy); imgurProxyUrl != nil {
+			redditOauth.imgurHTTPClient = &http.Client{Transport: &http.Transport{Proxy: http.ProxyURL(imgurProxyUrl)}}
+		}
+	}
+	// Refresh the token once in a while
 	go redditOauth.tokenRefresh(nextRefresh)
 	return redditOauth, nil
 }
@@ -190,7 +206,15 @@ func (o *Oauth) downloadToFile(link string, f *os.File) error {
 	if err != nil {
 		return errors.Wrap(err, "cannot create request")
 	}
-	resp, err := common.GlobalHttpClient.Do(req)
+	req.Header.Set("User-Agent", userAgent)
+	// Check Imgur and proxy
+	var client *http.Client
+	if o.imgurHTTPClient != nil && util.IsImgurLink(link) {
+		client = o.imgurHTTPClient
+	} else {
+		client = &common.GlobalHttpClient
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return err
 	}

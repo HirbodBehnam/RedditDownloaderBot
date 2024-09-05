@@ -195,8 +195,8 @@ func (o *Oauth) downloadToFile(link string, f *os.File) error {
 		return err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusForbidden {
-		return errors.New("Forbidden")
+	if resp.StatusCode/100 != 2 {
+		return errors.New("non 2xx status: " + resp.Status)
 	}
 	if resp.ContentLength == -1 {
 		return errors.New("Unknown length")

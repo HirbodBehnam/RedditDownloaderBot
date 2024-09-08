@@ -326,8 +326,11 @@ func (c *Client) handleAlbumUpload(bot *gotgbot.Bot, album reddit.FetchResultAlb
 		}
 	}
 	// Send the title and description
+	titleDescriptionMessageText := album.Title + "\n" + album.Description
 	if lastMessage != nil {
-		_, err = lastMessage.Reply(bot, album.Title+"\n"+album.Description, nil)
+		_, err = lastMessage.Reply(bot, titleDescriptionMessageText, nil)
+	} else { // how the fuck?
+		_, err = bot.SendMessage(chatID, titleDescriptionMessageText, nil)
 	}
 	return err
 }

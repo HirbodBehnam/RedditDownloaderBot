@@ -286,12 +286,16 @@ func (c *Client) handleAlbumUpload(bot *gotgbot.Bot, album reddit.FetchResultAlb
 		filePaths = append(filePaths, tmpFile)
 	}
 	// Now upload 10 of them at once
+	var lastMessage *gotgbot.Message
 	i := 0
 	for ; i < len(fileConfigs)/10; i++ {
-		_, err = bot.SendMediaGroup(chatID, fileConfigs[i*10:(i+1)*10], nil)
+		sentMessages, err := bot.SendMediaGroup(chatID, fileConfigs[i*10:(i+1)*10], nil)
 		if err != nil {
 			log.Println("Unable to upload gallery:", err)
 			_, _ = bot.SendMessage(chatID, generateGalleryFailedMessage(fileLinks[i*10:(i+1)*10]), nil)
+		}
+		if len(sentMessages) != 0 {
+			lastMessage = &sentMessages[len(sentMessages)-1]
 		}
 	}
 	err = nil // needed for last error check
@@ -299,20 +303,31 @@ func (c *Client) handleAlbumUpload(bot *gotgbot.Bot, album reddit.FetchResultAlb
 	if len(fileConfigs) == 1 {
 		switch f := fileConfigs[0].(type) {
 		case gotgbot.InputMediaPhoto:
-			_, err = bot.SendPhoto(chatID, f.Media, nil)
+			lastMessage, err = bot.SendPhoto(chatID, f.Media, nil)
 		case gotgbot.InputMediaVideo:
-			_, err = bot.SendVideo(chatID, f.Media, nil)
+			lastMessage, err = bot.SendVideo(chatID, f.Media, nil)
 		case gotgbot.InputMediaDocument:
-			_, err = bot.SendDocument(chatID, f.Media, nil)
+			lastMessage, err = bot.SendDocument(chatID, f.Media, nil)
 		default:
 			panic("IMPOSSIBLE")
 		}
 	} else if len(fileConfigs) > 1 {
-		_, err = bot.SendMediaGroup(chatID, fileConfigs, nil)
+		var sentMessages []gotgbot.Message
+		sentMessages, err = bot.SendMediaGroup(chatID, fileConfigs, nil)
+		if len(sentMessages) != 0 {
+			lastMessage = &sentMessages[len(sentMessages)-1]
+		}
 	}
 	if err != nil {
 		log.Println("Unable to upload gallery:", err)
 		_, err = bot.SendMessage(chatID, generateGalleryFailedMessage(fileLinks[i*10:]), nil)
+		if err != nil {
+			return err
+		}
+	}
+	// Send the title and description
+	if lastMessage != nil {
+		_, err = lastMessage.Reply(bot, album.Title+"\n"+album.Description, nil)
 	}
 	return err
 }

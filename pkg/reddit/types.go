@@ -131,10 +131,12 @@ type FetchResultAlbumEntry struct {
 
 // FetchResultAlbum is a result of reddit album
 type FetchResultAlbum struct {
-	// Title of the post
-	Title string
 	// The list of media in album
 	Album []FetchResultAlbumEntry
+	// Title of the post
+	Title string
+	// Description is known as selftext in Reddit API
+	Description string
 }
 
 // Dimension of a media

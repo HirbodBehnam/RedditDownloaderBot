@@ -403,8 +403,9 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 		if gData, ok := root["gallery_data"]; ok { // gallery
 			if data, ok := root["media_metadata"]; ok {
 				return FetchResultAlbum{
-					Title: title,
-					Album: getGalleryData(data.(map[string]interface{}), gData.(map[string]interface{})["items"].([]interface{})),
+					Title:       title,
+					Description: description,
+					Album:       getGalleryData(data.(map[string]interface{}), gData.(map[string]interface{})["items"].([]interface{})),
 				}, nil
 			}
 		}

@@ -20,9 +20,15 @@ import (
 // RunBot runs the bot with the specified token
 func (c *Client) RunBot(token string, allowedUsers AllowedUsers) {
 	// Setup the bot
-	bot, err := gotgbot.NewBot(token, nil)
+	bot, err := gotgbot.NewBot(token, &gotgbot.BotOpts{
+		BotClient: gotgbot.BotClient(&gotgbot.BaseBotClient{
+			DefaultRequestOpts: &gotgbot.RequestOpts{
+				Timeout: time.Second * 20,
+			},
+		}),
+	})
 	if err != nil {
-		log.Fatal("Cannot initialize the bot: ", err.Error())
+		log.Fatal("Cannot initialize the bot:", err.Error())
 	}
 	log.Println("Bot authorized on account.", bot.Username)
 	dispatcher := ext.NewDispatcher(&ext.DispatcherOpts{

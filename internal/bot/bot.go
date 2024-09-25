@@ -157,7 +157,10 @@ func (c *Client) fetchPostDetailsAndSend(bot *gotgbot.Bot, ctx *ext.Context) err
 		}
 	case reddit.FetchResultAlbum:
 		idString := util.UUIDToBase64(uuid.New())
-		err := c.CallbackCache.SetAlbumCache(idString, data)
+		err := c.CallbackCache.SetAlbumCache(idString, cache.CallbackAlbumCached{
+			PostLink: realPostUrl,
+			Album:    data,
+		})
 		if err != nil {
 			log.Println("Cannot set the album cache in database:", err)
 		}
@@ -214,10 +217,10 @@ func (c *Client) handleCallback(bot *gotgbot.Bot, ctx *ext.Context) error {
 	cachedData, err := c.CallbackCache.GetAndDeleteMediaCache(data.ID)
 	if errors.Is(err, cache.NotFoundErr) {
 		// Check albums
-		var album reddit.FetchResultAlbum
+		var album cache.CallbackAlbumCached
 		album, err = c.CallbackCache.GetAndDeleteAlbumCache(data.ID)
 		if err == nil {
-			return c.handleAlbumUpload(bot, album, ctx.EffectiveChat.Id, data.Mode == CallbackButtonDataModeFile)
+			return c.handleAlbumUpload(bot, album.Album, album.PostLink, ctx.EffectiveChat.Id, data.Mode == CallbackButtonDataModeFile)
 		} else if errors.Is(err, cache.NotFoundErr) {
 			// It does not exist...
 			_, err = ctx.EffectiveChat.SendMessage(bot, "Please resend the link.", nil)

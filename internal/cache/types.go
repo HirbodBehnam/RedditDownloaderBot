@@ -33,3 +33,12 @@ type Media struct {
 	// Height of the thing. Can be zero
 	Height int64
 }
+
+// CallbackAlbumCached is the album data which the user will request to be either
+// received in media or file format.
+type CallbackAlbumCached struct {
+	// The link of the post itself
+	PostLink string
+	// The album data
+	Album reddit.FetchResultAlbum
+}

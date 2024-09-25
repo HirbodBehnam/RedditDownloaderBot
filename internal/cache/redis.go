@@ -1,7 +1,6 @@
 package cache
 
 import (
-	"RedditDownloaderBot/pkg/reddit"
 	"RedditDownloaderBot/pkg/util"
 	"context"
 	"encoding/json"
@@ -49,14 +48,14 @@ func (r RedisCache) GetAndDeleteMediaCache(key string) (CallbackDataCached, erro
 	)
 }
 
-func (r RedisCache) SetAlbumCache(key string, value reddit.FetchResultAlbum) error {
+func (r RedisCache) SetAlbumCache(key string, value CallbackAlbumCached) error {
 	return r.client.
 		Set(context.Background(), redisAlbumCachePrefix+key, util.ToJsonString(value), r.ttl).
 		Err()
 }
 
-func (r RedisCache) GetAndDeleteAlbumCache(key string) (reddit.FetchResultAlbum, error) {
-	return parseRedisJson[reddit.FetchResultAlbum](
+func (r RedisCache) GetAndDeleteAlbumCache(key string) (CallbackAlbumCached, error) {
+	return parseRedisJson[CallbackAlbumCached](
 		r.client.
 			GetDel(context.Background(), redisAlbumCachePrefix+key).
 			Result(),
@@ -72,7 +71,7 @@ func (r RedisCache) Close() error {
 func parseRedisJson[T any](val string, err error) (T, error) {
 	// Check errors
 	var result T
-	if err == redis.Nil {
+	if errors.Is(err, redis.Nil) {
 		return result, NotFoundErr
 	} else if err != nil {
 		return result, errors.Wrap(err, "Unable to fetch data from Redis")

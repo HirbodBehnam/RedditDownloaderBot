@@ -223,7 +223,7 @@ func (c *Client) handlePhotoUpload(bot *gotgbot.Bot, photoUrl, title, thumbnailU
 }
 
 // handleAlbumUpload uploads an album to Telegram
-func (c *Client) handleAlbumUpload(bot *gotgbot.Bot, album reddit.FetchResultAlbum, chatID int64, asFile bool) error {
+func (c *Client) handleAlbumUpload(bot *gotgbot.Bot, album reddit.FetchResultAlbum, postUrl string, chatID int64, asFile bool) error {
 	// Report status
 	stopReportChannel := statusReporter(bot, chatID, gotgbot.ChatActionUploadPhoto)
 	defer close(stopReportChannel)
@@ -240,7 +240,6 @@ func (c *Client) handleAlbumUpload(bot *gotgbot.Bot, album reddit.FetchResultAlb
 	fileLinks := make([]string, 0, len(album.Album))
 	for _, media := range album.Album {
 		var tmpFile *os.File
-		var link string
 		var f gotgbot.InputMedia
 		switch media.Type {
 		case reddit.FetchResultMediaTypePhoto:
@@ -277,11 +276,10 @@ func (c *Client) handleAlbumUpload(bot *gotgbot.Bot, album reddit.FetchResultAlb
 		}
 		if err != nil {
 			log.Println("Unable to download album media:", err)
-			_, _ = bot.SendMessage(chatID, "I couldn’t download the gallery./nHere is the link: "+link, nil)
+			_, _ = bot.SendMessage(chatID, "I couldn’t download the gallery.\nHere is the link: "+media.Link, nil)
 			continue
 		}
 		fileConfigs = append(fileConfigs, f)
-		link = media.Link
 		fileLinks = append(fileLinks, media.Link)
 		filePaths = append(filePaths, tmpFile)
 	}
@@ -326,11 +324,11 @@ func (c *Client) handleAlbumUpload(bot *gotgbot.Bot, album reddit.FetchResultAlb
 		}
 	}
 	// Send the title and description
-	titleDescriptionMessageText := album.Title + "\n" + album.Description
+	titleDescriptionMessageText := addLinkIfNeeded("*"+escapeMarkdown(album.Title)+"*\n\n"+escapeMarkdown(album.Description), postUrl)
 	if lastMessage != nil {
-		_, err = lastMessage.Reply(bot, titleDescriptionMessageText, nil)
+		_, err = lastMessage.Reply(bot, titleDescriptionMessageText, &gotgbot.SendMessageOpts{ParseMode: gotgbot.ParseModeMarkdownV2})
 	} else { // how the fuck?
-		_, err = bot.SendMessage(chatID, titleDescriptionMessageText, nil)
+		_, err = bot.SendMessage(chatID, titleDescriptionMessageText, &gotgbot.SendMessageOpts{ParseMode: gotgbot.ParseModeMarkdownV2})
 	}
 	return err
 }

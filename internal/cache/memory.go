@@ -1,7 +1,6 @@
 package cache
 
 import (
-	"RedditDownloaderBot/pkg/reddit"
 	"sync"
 	"time"
 )
@@ -58,7 +57,7 @@ func (c *singleMemoryCache[K, V]) getAndDelete(key K) (V, bool) {
 // MemoryCache is an in memory cache to handle the callback data
 type MemoryCache struct {
 	mediaCache singleMemoryCache[string, CallbackDataCached]
-	albumCache singleMemoryCache[string, reddit.FetchResultAlbum]
+	albumCache singleMemoryCache[string, CallbackAlbumCached]
 	// Close this channel to stop the cleanup
 	cleanUpDoneChannel chan struct{}
 }
@@ -72,8 +71,8 @@ func NewMemoryCache(ttl, cleanUpInterval time.Duration) *MemoryCache {
 		mediaCache: singleMemoryCache[string, CallbackDataCached]{
 			cache: make(map[string]memoryCacheElement[CallbackDataCached]),
 		},
-		albumCache: singleMemoryCache[string, reddit.FetchResultAlbum]{
-			cache: make(map[string]memoryCacheElement[reddit.FetchResultAlbum]),
+		albumCache: singleMemoryCache[string, CallbackAlbumCached]{
+			cache: make(map[string]memoryCacheElement[CallbackAlbumCached]),
 		},
 		cleanUpDoneChannel: make(chan struct{}),
 	}
@@ -111,12 +110,12 @@ func (c *MemoryCache) GetAndDeleteMediaCache(key string) (CallbackDataCached, er
 	return value, err
 }
 
-func (c *MemoryCache) SetAlbumCache(key string, value reddit.FetchResultAlbum) error {
+func (c *MemoryCache) SetAlbumCache(key string, value CallbackAlbumCached) error {
 	c.albumCache.set(key, value)
 	return nil
 }
 
-func (c *MemoryCache) GetAndDeleteAlbumCache(key string) (reddit.FetchResultAlbum, error) {
+func (c *MemoryCache) GetAndDeleteAlbumCache(key string) (CallbackAlbumCached, error) {
 	value, exists := c.albumCache.getAndDelete(key)
 	var err error
 	if !exists {

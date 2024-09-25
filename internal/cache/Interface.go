@@ -1,7 +1,6 @@
 package cache
 
 import (
-	"RedditDownloaderBot/pkg/reddit"
 	"github.com/go-faster/errors"
 )
 
@@ -18,10 +17,10 @@ type Interface interface {
 	GetAndDeleteMediaCache(key string) (CallbackDataCached, error)
 	// SetAlbumCache sets a key and overwrite any old entries in cache. It should be used for
 	// storing album data in cache
-	SetAlbumCache(key string, value reddit.FetchResultAlbum) error
+	SetAlbumCache(key string, value CallbackAlbumCached) error
 	// GetAndDeleteAlbumCache will atomically get an album cache and delete it from cache.
 	// If it does not exist, returns NotFoundErr as error
-	GetAndDeleteAlbumCache(key string) (reddit.FetchResultAlbum, error)
+	GetAndDeleteAlbumCache(key string) (CallbackAlbumCached, error)
 	// Close must close the underlying database connection
 	Close() error
 }

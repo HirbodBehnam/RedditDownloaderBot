@@ -216,8 +216,10 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 	// Get the title
 	title := root["title"].(string)
 	title = html.UnescapeString(title)
+	title = strings.TrimSpace(title)
 	// Get the description (selftext) if it exists
 	description, _ := root["selftext"].(string)
+	description = strings.TrimSpace(description)
 	// Check thumbnail; This must be done before checking cross posts
 	thumbnails := extractThumbnails(root)
 	// Check cross post

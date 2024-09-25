@@ -5,7 +5,7 @@ go 1.23
 toolchain go1.23.0
 
 require (
-	github.com/PaulSonOfLars/gotgbot/v2 v2.0.0-rc.29
+	github.com/PaulSonOfLars/gotgbot/v2 v2.0.0-rc.29.0.20240908223106-b45dee8f385a
 	github.com/PuerkitoBio/goquery v1.10.0
 	github.com/go-faster/errors v0.7.1
 	github.com/google/uuid v1.6.0

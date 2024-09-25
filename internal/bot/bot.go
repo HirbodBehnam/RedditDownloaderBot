@@ -189,8 +189,12 @@ func (c *Client) fetchPostDetailsAndSend(bot *gotgbot.Bot, ctx *ext.Context) err
 	}
 	_, err := ctx.EffectiveMessage.Reply(bot, toSendText, toSendOpt)
 	if err != nil {
-		toSendOpt.ParseMode = gotgbot.ParseModeNone // fall back and don't format message
+		toSendOpt.ParseMode = gotgbot.ParseModeMarkdown // fall to V1 and try again
 		_, err = ctx.EffectiveMessage.Reply(bot, toSendText, toSendOpt)
+		if err != nil {
+			toSendOpt.ParseMode = gotgbot.ParseModeNone // fall back again and don't format message
+			_, err = ctx.EffectiveMessage.Reply(bot, toSendText, toSendOpt)
+		}
 	}
 	return err
 }

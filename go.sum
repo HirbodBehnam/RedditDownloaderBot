@@ -1,5 +1,5 @@
-github.com/PaulSonOfLars/gotgbot/v2 v2.0.0-rc.29 h1:5/K8zgmoKnsegt6h9XvFIJAGxbHVWOEwSpjdjaySf6A=
-github.com/PaulSonOfLars/gotgbot/v2 v2.0.0-rc.29/go.mod h1:kL1v4iIjlalwm3gCYGvF4NLa3hs+aKEfRkNJvj4aoDU=
+github.com/PaulSonOfLars/gotgbot/v2 v2.0.0-rc.29.0.20240908223106-b45dee8f385a h1:hCvTuOlJvlXk74qJA2GafmyZm4job4M40S+WX7loDf0=
+github.com/PaulSonOfLars/gotgbot/v2 v2.0.0-rc.29.0.20240908223106-b45dee8f385a/go.mod h1:kL1v4iIjlalwm3gCYGvF4NLa3hs+aKEfRkNJvj4aoDU=
 github.com/PuerkitoBio/goquery v1.10.0 h1:6fiXdLuUvYs2OJSvNRqlNPoBm6YABE226xrbavY5Wv4=
 github.com/PuerkitoBio/goquery v1.10.0/go.mod h1:TjZZl68Q3eGHNBA8CWaxAN7rOU1EbDz3CWuolcO5Yu4=
 github.com/andybalholm/cascadia v1.3.2 h1:3Xi6Dw5lHF15JtdcmAHD3i1+T8plmv7BQ/nsViSLyss=

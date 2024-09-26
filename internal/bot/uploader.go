@@ -324,7 +324,11 @@ func (c *Client) handleAlbumUpload(bot *gotgbot.Bot, album reddit.FetchResultAlb
 		}
 	}
 	// Send the title and description
-	titleDescriptionMessageText := addLinkIfNeeded("*"+escapeMarkdown(album.Title)+"*\n\n"+escapeMarkdown(album.Description), postUrl)
+	titleDescriptionMessageText := "*" + escapeMarkdown(album.Title) + "*"
+	if album.Description != "" {
+		titleDescriptionMessageText += "\n\n" + escapeMarkdown(album.Description)
+	}
+	titleDescriptionMessageText = addLinkIfNeeded(titleDescriptionMessageText, postUrl)
 	if lastMessage != nil {
 		_, err = lastMessage.Reply(bot, titleDescriptionMessageText, &gotgbot.SendMessageOpts{ParseMode: gotgbot.ParseModeMarkdownV2})
 	} else { // how the fuck?

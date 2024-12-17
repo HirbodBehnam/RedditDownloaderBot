@@ -12,6 +12,7 @@ import (
 	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers"
 	"log"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -186,6 +187,16 @@ func (c *Client) fetchPostDetailsAndSend(bot *gotgbot.Bot, ctx *ext.Context) err
 	default:
 		log.Printf("unknown type: %T\n", result)
 		toSendText = "Unknown type (Please report this on the main GitHub project.)"
+	}
+	// Check the toSendText size
+	if len(toSendText) > 4096 {
+		_, err := bot.SendDocument(ctx.EffectiveChat.Id, &gotgbot.FileReader{
+			Name: "post.txt",
+			Data: strings.NewReader(toSendText),
+		}, &gotgbot.SendDocumentOpts{ReplyParameters: &gotgbot.ReplyParameters{
+			MessageId: ctx.EffectiveMessage.MessageId,
+		}})
+		return err
 	}
 	_, err := ctx.EffectiveMessage.Reply(bot, toSendText, toSendOpt)
 	if err != nil {

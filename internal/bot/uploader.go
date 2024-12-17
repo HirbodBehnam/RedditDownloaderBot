@@ -30,13 +30,13 @@ func (c *Client) handleGifUpload(bot *gotgbot.Bot, gifUrl, title, thumbnailUrl, 
 	}()
 	// Upload the gif
 	// Check file size
-	if !util.CheckFileSize(tmpFile.Name(), RegularMaxUploadSize) {
+	if !util.CheckFileSize(tmpFile.Name(), regularMaxUploadSize) {
 		_, err = bot.SendMessage(chatID, "The file is too large to upload on Telegram.\nHere is the link: "+gifUrl, nil)
 		return err
 	}
 	// Check thumbnail
 	var tmpThumbnailFile *os.File = nil
-	if !util.CheckFileSize(tmpFile.Name(), NoThumbnailNeededSize) && thumbnailUrl != "" {
+	if !util.CheckFileSize(tmpFile.Name(), noThumbnailNeededSize) && thumbnailUrl != "" {
 		tmpThumbnailFile, err = c.RedditOauth.DownloadThumbnail(thumbnailUrl)
 		if err != nil {
 			log.Println("Cannot download GIF thumbnail", thumbnailUrl, ":", err)
@@ -70,12 +70,8 @@ func (c *Client) handleGifUpload(bot *gotgbot.Bot, gifUrl, title, thumbnailUrl, 
 		_, err = bot.SendMessage(chatID, "I couldn’t upload this GIF.\nHere is the link: "+gifUrl, nil)
 		return err
 	}
-	// Send description as another message
-	if description != "" {
-		_, err = sentMessage.Reply(bot, description, nil)
-		return err
-	}
-	return nil
+	// Send description as another message (if available)
+	return sendPostDescription(bot, description, sentMessage, false)
 }
 
 // handleVideoUpload downloads a video and then uploads it to Telegram
@@ -99,13 +95,13 @@ func (c *Client) handleVideoUpload(bot *gotgbot.Bot, vidUrl, audioUrl, title, th
 		_ = os.Remove(tmpFile.Name())
 	}()
 	// Check file size
-	if !util.CheckFileSize(tmpFile.Name(), RegularMaxUploadSize) {
+	if !util.CheckFileSize(tmpFile.Name(), regularMaxUploadSize) {
 		_, err = bot.SendMessage(chatID, "This file is too large to upload on Telegram.\n"+generateVideoUrlsMessage(vidUrl, audioUrl), nil)
 		return err
 	}
 	// Check thumbnail
 	var tmpThumbnailFile *os.File = nil
-	if !util.CheckFileSize(tmpFile.Name(), NoThumbnailNeededSize) && thumbnailUrl != "" {
+	if !util.CheckFileSize(tmpFile.Name(), noThumbnailNeededSize) && thumbnailUrl != "" {
 		tmpThumbnailFile, err = c.RedditOauth.DownloadThumbnail(thumbnailUrl)
 		if err != nil {
 			log.Println("Cannot download video thumbnail", thumbnailUrl, ":", err)
@@ -141,12 +137,8 @@ func (c *Client) handleVideoUpload(bot *gotgbot.Bot, vidUrl, audioUrl, title, th
 		_, err = bot.SendMessage(chatID, "I couldn’t upload this video.\n"+generateVideoUrlsMessage(vidUrl, audioUrl), nil)
 		return err
 	}
-	// Send description as another message
-	if description != "" {
-		_, err = sentMessage.Reply(bot, description, nil)
-		return err
-	}
-	return nil
+	// Send description as another message (if available)
+	return sendPostDescription(bot, description, sentMessage, false)
 }
 
 // handleVideoUpload downloads a photo and then uploads it to Telegram
@@ -172,15 +164,15 @@ func (c *Client) handlePhotoUpload(bot *gotgbot.Bot, photoUrl, title, thumbnailU
 	}()
 	// Check filesize
 	if asPhoto {
-		asPhoto = util.CheckFileSize(tmpFile.Name(), PhotoMaxUploadSize) // send photo as file if it is larger than 10MB
+		asPhoto = util.CheckFileSize(tmpFile.Name(), photoMaxUploadSize) // send photo as file if it is larger than 10MB
 	}
-	if !util.CheckFileSize(tmpFile.Name(), RegularMaxUploadSize) {
+	if !util.CheckFileSize(tmpFile.Name(), regularMaxUploadSize) {
 		_, err = bot.SendMessage(chatID, "The file is too large to upload on Telegram.\nHere is the link: "+photoUrl, nil)
 		return err
 	}
 	// Download thumbnail
 	var tmpThumbnailFile *os.File = nil
-	if !asPhoto && !util.CheckFileSize(tmpFile.Name(), NoThumbnailNeededSize) && thumbnailUrl != "" {
+	if !asPhoto && !util.CheckFileSize(tmpFile.Name(), noThumbnailNeededSize) && thumbnailUrl != "" {
 		// photos does not support thumbnail...
 		tmpThumbnailFile, err = c.RedditOauth.DownloadThumbnail(thumbnailUrl)
 		if err != nil {
@@ -214,12 +206,8 @@ func (c *Client) handlePhotoUpload(bot *gotgbot.Bot, photoUrl, title, thumbnailU
 		_, err = bot.SendMessage(chatID, "I couldn’t upload this image.\nHere is the link: "+photoUrl, nil)
 		return err
 	}
-	// Send description as another message
-	if description != "" {
-		_, err = sentMessage.Reply(bot, description, nil)
-		return err
-	}
-	return nil
+	// Send description as another message (if available)
+	return sendPostDescription(bot, description, sentMessage, false)
 }
 
 // handleAlbumUpload uploads an album to Telegram
@@ -329,12 +317,7 @@ func (c *Client) handleAlbumUpload(bot *gotgbot.Bot, album reddit.FetchResultAlb
 		titleDescriptionMessageText += "\n\n" + escapeMarkdown(album.Description)
 	}
 	titleDescriptionMessageText = addLinkIfNeeded(titleDescriptionMessageText, postUrl)
-	if lastMessage != nil {
-		_, err = lastMessage.Reply(bot, titleDescriptionMessageText, &gotgbot.SendMessageOpts{ParseMode: gotgbot.ParseModeMarkdownV2})
-	} else { // how the fuck?
-		_, err = bot.SendMessage(chatID, titleDescriptionMessageText, &gotgbot.SendMessageOpts{ParseMode: gotgbot.ParseModeMarkdownV2})
-	}
-	return err
+	return sendPostDescription(bot, titleDescriptionMessageText, lastMessage, true)
 }
 
 // handleAudioUpload simply downloads then uploads an audio to Telegram
@@ -364,12 +347,8 @@ func (c *Client) handleAudioUpload(bot *gotgbot.Bot, audioURL, title, postUrl, d
 		_, err = bot.SendMessage(chatID, "I couldn’t upload the audio.\n"+generateAudioURLMessage(audioURL), nil)
 		return err
 	}
-	// Send description as another message
-	if description != "" {
-		_, err = sentMessage.Reply(bot, description, nil)
-		return err
-	}
-	return nil
+	// Send description as another message (if available)
+	return sendPostDescription(bot, description, sentMessage, false)
 }
 
 // statusReporter starts reporting for uploading a thing in telegram

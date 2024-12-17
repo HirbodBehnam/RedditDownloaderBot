@@ -124,3 +124,27 @@ func getLinkMapOfFetchResultMediaEntries(entries reddit.FetchResultMediaEntries)
 	}
 	return result
 }
+
+// Sends a post description to the bot if it exists.
+// Replies to a message. Can optionally use markdown if the description
+// fits in a message.
+func sendPostDescription(bot *gotgbot.Bot, description string, sentMessage *gotgbot.Message, useMarkdown bool) error {
+	var err error = nil
+	if description != "" { // if the description is empty don't do anything
+		if len(description) > maxTextSize {
+			_, err = bot.SendDocument(sentMessage.Chat.Id, &gotgbot.FileReader{
+				Name: "description.txt",
+				Data: strings.NewReader(description),
+			}, &gotgbot.SendDocumentOpts{ReplyParameters: &gotgbot.ReplyParameters{
+				MessageId: sentMessage.MessageId,
+			}})
+		} else {
+			opts := new(gotgbot.SendMessageOpts)
+			if useMarkdown {
+				opts.ParseMode = gotgbot.ParseModeMarkdownV2
+			}
+			_, err = sentMessage.Reply(bot, description, opts)
+		}
+	}
+	return err
+}

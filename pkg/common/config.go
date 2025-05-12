@@ -6,7 +6,7 @@ import (
 )
 
 // Version is the version of this program :|
-const Version = "4.0.0"
+const Version = "4.1.0"
 
 // GlobalHttpClient is a http client which all request must be done through it
 var GlobalHttpClient = http.Client{

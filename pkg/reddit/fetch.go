@@ -395,6 +395,20 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 					BotError:    "The type of this post is rich:video but it does not contains `domain`",
 				}
 			}
+		case "gallery":
+			if gData, ok := root["gallery_data"]; ok {
+				if data, ok := root["media_metadata"]; ok {
+					return FetchResultAlbum{
+						Title:       title,
+						Description: description,
+						Album:       getGalleryData(data.(map[string]interface{}), gData.(map[string]interface{})["items"].([]interface{})),
+					}, nil
+				}
+			}
+			return nil, &FetchError{
+				NormalError: "",
+				BotError:    "This post looks like a gallery but it's not. Please report this post: https://github.com/HirbodBehnam/RedditDownloaderBot/issues",
+			}
 		default:
 			return nil, &FetchError{
 				NormalError: "",

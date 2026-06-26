@@ -310,7 +310,7 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 		case "rich:video": // files hosted other than reddit; This bot currently supports Gfycat.com
 			if urlObject, domainExists := root["domain"]; domainExists {
 				switch urlObject.(string) {
-				case "gfycat.com": // just act like gif
+				case "gfycat.com", "redgifs.com": // just act like gif; both expose preview.reddit_video_preview
 					images := root["preview"].(map[string]interface{})["images"].([]interface{})[0].(map[string]interface{})
 					if _, hasVariants := images["variants"]; hasVariants {
 						if mp4, hasMp4 := images["variants"].(map[string]interface{})["mp4"]; hasMp4 {
@@ -409,6 +409,11 @@ func getPost(postUrl string, root map[string]interface{}) (fetchResult interface
 				NormalError: "",
 				BotError:    "This post looks like a gallery but it's not. Please report this post: https://github.com/HirbodBehnam/RedditDownloaderBot/issues",
 			}
+		case "self": // self/text post; post_hint is present but text lives in selftext
+			return FetchResultText{
+				Title: title,
+				Text:  strings.ReplaceAll(html.UnescapeString(root["selftext"].(string)), "&#x200B;", ""),
+			}, nil
 		default:
 			return nil, &FetchError{
 				NormalError: "",
